@@ -1,0 +1,17 @@
+train_id: no1
+algorithm: DANN
+
+dataset:
+  rootdir: ./dataset
+  dataset: Glasgow
+  val_fold: 
+  test_fold: 
+
+model:
+  featurizer: MLP
+  classifier: linear
+  loss_type: Cross
+
+training:
+  
+
