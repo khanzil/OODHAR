@@ -98,7 +98,7 @@ class ERM(Algorithm):
         checkpoint_path = os.path.join(checkpoint_dir, 'ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
-            'network': self.network.module.state_dict(),
+            'network': self.network.modules.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
             'cuda_rng': torch.cuda.get_rng_state(),
@@ -109,7 +109,7 @@ class ERM(Algorithm):
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path)
         epoch = state_dict['epoch']
-        self.network.module.load_state_dict(state_dict['network'])
+        self.network.modules.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
         torch.cuda.set_rng_state(state_dict['cuda_rng'])
@@ -206,9 +206,9 @@ class DANN(Algorithm):
         checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
-            'featurizer': self.featurizer.module.state_dict(),
-            'classifier': self.classifier.module.state_dict(),
-            'discriminator': self.discriminator.module.state_dict(),
+            'featurizer': self.featurizer.modules.state_dict(),
+            'classifier': self.classifier.modules.state_dict(),
+            'discriminator': self.discriminator.modules.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
             'cuda_rng': torch.cuda.get_rng_state(),
@@ -219,9 +219,9 @@ class DANN(Algorithm):
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path)
         epoch = state_dict['epoch']
-        self.featurizer.module.load_state_dict(state_dict['featurizer'])
-        self.classifier.module.load_state_dict(state_dict['classifier'])
-        self.discriminator.module.load_state_dict(state_dict['discriminator'])
+        self.featurizer.modules.load_state_dict(state_dict['featurizer'])
+        self.classifier.modules.load_state_dict(state_dict['classifier'])
+        self.discriminator.modules.load_state_dict(state_dict['discriminator'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
         torch.cuda.set_rng_state(state_dict['cuda_rng'])

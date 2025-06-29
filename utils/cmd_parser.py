@@ -11,10 +11,10 @@ def get_agrs_parser():
     subparser = parser.add_subparsers(dest='mode')
     parser_train = subparser.add_parser('train')
     parser_eval = subparser.add_parser('evaluate')
-    parser_train.add_argument('--seed', type=int, default=2020, metavar='N')
-    parser_train.add_argument('--num_workers', type=int, default=8, metavar='N')
+    parser_train.add_argument('--seed', type=int, default=0, metavar='N')
+    parser_train.add_argument('--num_workers', type=int, default=4, metavar='N')
     parser_train.add_argument('--no_cuda', action='store_true', help='Do not use cuda.')
-    parser_eval.add_argument('--num_workers', type=int, default=8, metavar='N')
+    parser_eval.add_argument('--num_workers', type=int, default=4, metavar='N')
     parser_eval.add_argument('--no_cuda', action='store_true', help='Do not use cuda.')
 
     args = parser.parse_args() # get all arguments in the parser
