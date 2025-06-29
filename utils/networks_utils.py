@@ -7,18 +7,20 @@ from torch.autograd import Function
 
 class MLP(nn.Module):
     """Just  an MLP"""
-    def __init__(self, n_inputs, n_outputs, cfg):
+    def __init__(self, n_inputs, cfg):
         super(MLP, self).__init__()
-        self.input = nn.Linear(n_inputs, cfg['mlp_width'])
-        self.dropout = nn.Dropout(cfg['mlp_dropout'])
+        self.flat = nn.Flatten()
+        self.input = nn.Linear(n_inputs, cfg['model']['mlp_width'])
+        self.dropout = nn.Dropout(cfg['model']['mlp_dropout'])
         self.hiddens = nn.ModuleList([
-            nn.Linear(cfg['mlp_width'], cfg['mlp_width'])
-            for _ in range(cfg['mlp_depth']-2)])
-        self.output = nn.Linear(cfg['mlp_width'], n_outputs)
-        self.n_outputs = n_outputs
+            nn.Linear(cfg['model']['mlp_width'], cfg['model']['mlp_width'])
+            for _ in range(cfg['model']['mlp_depth']-2)])
+        self.output = nn.Linear(cfg['model']['mlp_width'], cfg['model']['mlp_num_hidden'])
+        self.n_outputs = cfg['model']['mlp_num_hidden']
         self.activation = nn.Identity() # for URM; does not affect other algorithms
 
     def forward(self, x):
+        x = self.flat(x)
         x = self.input(x)
         x = self.dropout(x)
         x = F.relu(x)
@@ -34,11 +36,11 @@ class ResNet(nn.Module):
     """ResNet with the softmax chopped off and the batchnorm frozen"""
     def __init__(self, input_shape, cfg):
         super(ResNet, self).__init__()
-        if cfg['resnet18']:
-            self.network = torchvision.models.resnet18(pretrained=True)
+        if cfg['model']['resnet18']:
+            self.network = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
             self.n_outputs = 512
         else:
-            self.network = torchvision.models.resnet50(pretrained=True)
+            self.network = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
             self.n_outputs = 2048
 
         # adapt number of channels
@@ -57,11 +59,12 @@ class ResNet(nn.Module):
         del self.network.fc
         self.network.fc = nn.Identity()
 
-        if cfg["freeze_bn"]:
+        if cfg['model']['freeze_bn']:
             self.freeze_bn()
         self.cfg = cfg
-        self.dropout = nn.Dropout(cfg['resnet_dropout'])
+        self.dropout = nn.Dropout(cfg['model']['resnet_dropout'])
         self.activation = nn.Identity() # for URM; does not affect other algorithms
+        # torchvision Resnet already have a flatten layer 
 
     def forward(self, x):
         """Encode x into a feature vector of size n_outputs."""
@@ -72,7 +75,7 @@ class ResNet(nn.Module):
         Override the default train() to freeze the BN parameters
         """
         super().train(mode)
-        if self.cfg["freeze_bn"]:
+        if self.cfg['model']["freeze_bn"]:
             self.freeze_bn()
 
     def freeze_bn(self):
@@ -146,20 +149,20 @@ featurizer_dict = {
 }
 
 # This include the backbone networks
-def Featurizer(input_shape, cfg):
+def Featurizer(cfg):
     """
         Select feature extractor    
     """
+
+    input_shape = [int(item.strip()) for item in cfg['model']['num_inputs'].split(',')]
     
     match cfg["model"]["featurizer"]:
         case "MLP":
-            if len(input_shape) == 1:
-                raise ValueError(f"Expect input_shape for MLP model to have len 1, get {len(input_shape)}")
-            return MLP(input_shape[0], cfg["model"]["mlp_width"], cfg["model"])
+            return MLP(torch.sum(torch.ones(input_shape)).int(), cfg)
         case "MNIST_CNN":
             return MNIST_CNN(input_shape)
         case "ResNet":
-            return ResNet(input_shape, cfg["model"])
+            return ResNet(input_shape, cfg)
         case _:
             raise NotImplementedError
 

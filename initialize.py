@@ -15,7 +15,7 @@ def init_train(cfg, args):
     '''
         create directories
     '''
-    results_dir = './results/' + cfg['dataset']['dataset'] + '/' + cfg['train_id']
+    results_dir = os.path.join('./results', cfg['dataset']['dataset'], cfg['train_id'])
     if os.path.isdir(results_dir):
         raise ValueError(f'{results_dir} Already existed!')
     
@@ -25,16 +25,14 @@ def init_train(cfg, args):
     '''
         get dataloader
     '''
-    train_loader = get_dataloader(cfg, args, 'train')
-    val_loader = get_dataloader(cfg, args, 'val')
-
+    train_loader, val_loader = get_dataloader(cfg, args, 'trainval')
     '''
         get algorithm
     '''
     algo = get_algo(cfg)
 
 
-    return algo, train_loader, val_loader
+    return algo, train_loader, val_loader, results_dir
 
 
 

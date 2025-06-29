@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 from utils.networks_utils import Featurizer, Classifier, GRL
 
 class Algorithm(nn.Module):
@@ -10,9 +11,8 @@ class Algorithm(nn.Module):
     - update()
     - predict()
     """
-    def __init__(self, cfg):
-        super(Algorithm, self).__init__()
-        self.cfg = cfg
+    def __init__(self):
+        super().__init__()
 
     def update(self, minibatch, unlabeled=None):
         """
@@ -37,54 +37,65 @@ class Algorithm(nn.Module):
         raise NotImplementedError
 
 class ERM(Algorithm):
-    def __init__ (self, input_shape, cfg):
+    def __init__ (self, cfg):
         super().__init__()
-        self.featurizer = Featurizer(input_shape, cfg)
+        self.cfg = cfg
+        self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfg['dataset']['num_classes'],
-            cfg["model"]["nonliner_classifier"]
+            cfg["model"]["nonlinear_classifier"]
         )
 
         self.network = nn.Sequential(self.featurizer, self.classifier)
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
-                                          lr=cfg['model']['learning_rate'],
-                                          weight_decay=cfg['model']['weight_decay'])
+                                          lr=cfg['algo']['learning_rate'],
+                                          weight_decay=cfg['algo']['weight_decay'])
         
-        if cfg['model']['loss_type'] is 'CrossEntropy':
+        if cfg['algo']['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss() 
         else:
-            raise NotImplementedError(f"{cfg['model']['loss_type']} is not implemented")
+            raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
+        
+        self.loss_dict = {'loss_class': 0}
+
+        self.loss_dict_val = {'loss_class': 0}
         
     def update(self, minibatch, unlabeled=None):
-        all_x = torch.cat([x for x, y, d in minibatch])
-        all_y = torch.cat([y for x, y, d in minibatch])
+        all_x = minibatch.batch_feature
+        all_y = minibatch.batch_label
         loss = self.loss_type(self.predict(all_x), all_y)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        return {'loss': loss.item()}
+        self.loss_dict['loss_class'] += loss.item()
 
     def predict(self, x):
         return self.network(x)
 
-    def validate(self, minibatch):
-        
-        all_x = torch.cat([x for x, y, d in minibatch])
-        all_y = torch.cat([y for x, y, d in minibatch])
-        with torch.no_grad:
-            self.featurizer.eval()
-            self.classifier.eval()
-            loss = self.loss_type(self.predict(all_x), all_y)
+    def validate(self, minibatch):  
+        all_x = minibatch.batch_feature
+        all_y = minibatch.batch_label
+        self.featurizer.eval()
+        self.classifier.eval()
+
+        with torch.no_grad():
+            pred = self.predict(all_x)
+            loss_class = self.loss_type(pred, all_y)
+
+            _, pred = pred.max(1) # same as np.argmax()
+            num_corrects = torch.eq(pred, all_y).sum()
 
         self.featurizer.train()
         self.classifier.train()
 
-        return {'loss': loss.item()}
+        self.loss_dict_val['loss_class'] += loss_class.item()
+        return num_corrects
 
-    def save_ckpt(self, epoch, checkpoint_path):
+    def save_ckpt(self, epoch, checkpoint_dir):
+        checkpoint_path = os.path.join(checkpoint_dir, 'ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
             'network': self.network.module.state_dict(),
@@ -93,7 +104,7 @@ class ERM(Algorithm):
             'cuda_rng': torch.cuda.get_rng_state(),
             'np_random': np.random.get_state(),
         }
-        torch.save(state_dict, checkpoint_path)        
+        torch.save(state_dict, checkpoint_dir)        
 
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path)
@@ -107,11 +118,11 @@ class ERM(Algorithm):
 
 
 class DANN(Algorithm):
-    def __init__ (self, input_shape, cfg):
+    def __init__ (self, cfg):
         super().__init__()
-        
-        self.lambd = cfg['model']['lambda']
-        self.featurizer = Featurizer(input_shape, cfg)
+        self.cfg = cfg
+        self.lambd = cfg['algo']['lambda']
+        self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfg['dataset']['num_classes'],
@@ -119,78 +130,85 @@ class DANN(Algorithm):
         )
 
         self.discriminator = nn.Sequential(
-            GRL(cfg['model']['lambda']),
+            GRL(),
             Classifier(
             self.featurizer.n_outputs,
             cfg['dataset']['num_domains'],
-            cfg["model"]["nonlinear_discriminator"]
+            cfg["algo"]["nonlinear_discriminator"]
             )
         )
-        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())), 
-                                          lr=cfg['model']['learning_rate'],
-                                          weight_decay=cfg['model']['weight_decay'])
+        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())+list(self.discriminator.parameters())), 
+                                          lr=cfg['algo']['learning_rate'],
+                                          weight_decay=cfg['algo']['weight_decay'])
         
-        if cfg['model']['loss_type'] is 'CrossEntropy':
+        if cfg['algo']['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss() 
         else:
-            raise NotImplementedError(f"{cfg['model']['loss_type']} is not implemented")
+            raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
         
-        if cfg['model']['loss_type_d'] is 'CrossEntropy':
+        if cfg['algo']['loss_type_d'] == 'CrossEntropy':
             self.loss_type_d = nn.CrossEntropyLoss() 
         else:
-            raise NotImplementedError(f"{cfg['model']['loss_type_d']} is not implemented")        
+            raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
+        
+        self.loss_dict = {'loss': 0,
+                          'loss_class': 0,
+                          'loss_domain': 0}
+        
+        self.loss_dict_val = {'loss_class': 0}
         
     def update(self, minibatch):
-        all_x = torch.cat([x for x, y, d in minibatch])
-        all_y = torch.cat([y for x, y, d in minibatch])
-        all_d = torch.cat([d for x, y, d in minibatch])
+        all_x = minibatch.batch_feature
+        all_y = minibatch.batch_label
+        all_d = minibatch.batch_domain
 
         all_z = self.featurizer(all_x)
 
-        loss_class = self.loss_type(self.classifier(all_z), all_y)
-        loss_domain = self.loss_type_d(self.discriminator(all_z), all_d) 
+        pred = self.classifier(all_z)
+        pred_d = self.discriminator(all_z)
+
+        loss_class = self.loss_type(pred, all_y)
+        loss_domain = self.loss_type_d(pred_d, all_d) 
         loss = loss_class + loss_domain * self.lambd
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()    
 
-        return {'loss': loss.item(), 
-                'loss_class': loss_class.item(), 
-                'loss_domain': loss_domain.item()}
+        self.loss_dict['loss'] += loss.item()
+        self.loss_dict['loss_class'] += loss_class.item()
+        self.loss_dict['loss_domain'] += loss_domain.item()
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
 
     def validate(self, minibatch):
-        all_x = torch.cat([x for x, y, d in minibatch])
-        all_y = torch.cat([y for x, y, d in minibatch])
-        all_d = torch.cat([d for x, y, d in minibatch])
+        all_x = minibatch.batch_feature
+        all_y = minibatch.batch_label
 
-        all_z = self.featurizer(all_x)
+        self.featurizer.eval()
+        self.classifier.eval()
 
         with torch.no_grad():
-            self.featurizer.eval()
-            self.classifier.eval()
-            self.discriminator.eval()
+            pred = self.predict(all_x)
+            loss_class = self.loss_type(pred, all_y)
 
-            loss_class = self.loss_type(self.classifier(all_z), all_y)
-            loss_domain = self.loss_type_d(self.discriminator(all_z), all_d) 
-            loss = loss_class + loss_domain * self.lambd
+            _, pred = pred.max(1) # same as np.argmax()
+            num_corrects = torch.eq(pred, all_y).sum()
 
         self.featurizer.train()
         self.classifier.train()
-        self.discriminator.train()
 
-        return {'loss': loss.item(), 
-                'loss_class': loss_class.item(), 
-                'loss_domain': loss_domain.item()}
-    def save_ckpt(self, epoch, checkpoint_path):
+        self.loss_dict_val['loss_class'] += loss_class.item()
+        return num_corrects
+    
+    def save_ckpt(self, epoch, results_dir):
+        checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
             'featurizer': self.featurizer.module.state_dict(),
             'classifier': self.classifier.module.state_dict(),
-            'discriminator': self.discriminator.modeul.state_dict(),
+            'discriminator': self.discriminator.module.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
             'cuda_rng': torch.cuda.get_rng_state(),
@@ -201,7 +219,9 @@ class DANN(Algorithm):
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path)
         epoch = state_dict['epoch']
-        self.network.module.load_state_dict(state_dict['network'])
+        self.featurizer.module.load_state_dict(state_dict['featurizer'])
+        self.classifier.module.load_state_dict(state_dict['classifier'])
+        self.discriminator.module.load_state_dict(state_dict['discriminator'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
         torch.cuda.set_rng_state(state_dict['cuda_rng'])
