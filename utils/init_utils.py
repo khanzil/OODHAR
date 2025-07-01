@@ -15,11 +15,13 @@ datasets = {
 
 collate_fns = {
     'Glasgow'   : GlasgowCollate
-
 }
 
-def get_algo(cfg):
-    return algos[cfg['algorithm']](cfg)
+def get_algo(cfg, args):
+    algo = algos[cfg['algorithm']](cfg)
+    if not args.no_cuda:
+        algo.cuda()
+    return algo
 
 def get_dataloader(cfg, args, trainval_test):
     dataset_dir = os.path.join(cfg['dataset']['rootdir'], cfg['dataset']['dataset'])

@@ -10,7 +10,7 @@ def get_agrs_parser():
     parser.add_argument('-c', '--config_file', help='Specify config file', metavar='FILE')
     subparser = parser.add_subparsers(dest='mode')
     parser_train = subparser.add_parser('train')
-    parser_eval = subparser.add_parser('evaluate')
+    parser_eval = subparser.add_parser('test')
     parser_train.add_argument('--seed', type=int, default=0, metavar='N')
     parser_train.add_argument('--num_workers', type=int, default=4, metavar='N')
     parser_train.add_argument('--no_cuda', action='store_true', help='Do not use cuda.')

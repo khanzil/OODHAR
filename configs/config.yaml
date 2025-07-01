@@ -41,3 +41,4 @@ train:
 
 test:
   batch_size: 32
+  ckpt_dir: None

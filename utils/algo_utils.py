@@ -57,9 +57,8 @@ class ERM(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
         
-        self.loss_dict = {'loss_class': 0}
-
-        self.loss_dict_val = {'loss_class': 0}
+        self.loss_dict = {'loss_class_train': 0,
+                          'loss_class_val' : 0}
         
     def update(self, minibatch, unlabeled=None):
         all_x = minibatch.batch_feature
@@ -70,7 +69,11 @@ class ERM(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        self.loss_dict['loss_class'] += loss.item()
+        self.loss_dict['loss_class_train'] += loss.item()
+
+    def init_loss_dict(self):
+        for key in self.loss_dict:
+            self.loss_dict[key] = 0
 
     def predict(self, x):
         return self.network(x)
@@ -91,28 +94,30 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict_val['loss_class'] += loss_class.item()
-        return num_corrects
+        self.loss_dict['loss_class_val'] += loss_class.item()
+        return num_corrects.cpu().numpy(), pred.cpu().numpy(), all_y.cpu().numpy()
 
-    def save_ckpt(self, epoch, checkpoint_dir):
-        checkpoint_path = os.path.join(checkpoint_dir, 'ckpt.pth.rar')
+    def save_ckpt(self, epoch, results_dir):
+        checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
-            'network': self.network.modules.state_dict(),
+            'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
-            'cuda_rng': torch.cuda.get_rng_state(),
             'np_random': np.random.get_state(),
         }
-        torch.save(state_dict, checkpoint_dir)        
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path)
+        state_dict = torch.load(checkpoint_path, weights_only=False)
         epoch = state_dict['epoch']
-        self.network.modules.load_state_dict(state_dict['network'])
+        self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
-        torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return epoch
 
@@ -151,12 +156,15 @@ class DANN(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
         
-        self.loss_dict = {'loss': 0,
-                          'loss_class': 0,
-                          'loss_domain': 0}
-        
-        self.loss_dict_val = {'loss_class': 0}
-        
+        self.loss_dict = {'loss_train': 0,
+                          'loss_class_train': 0,
+                          'loss_domain_train': 0,
+                          'loss_class_val': 0}
+
+    def init_loss_dict(self):
+        for key in self.loss_dict:
+            self.loss_dict[key] = 0
+
     def update(self, minibatch):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
@@ -175,9 +183,9 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()    
 
-        self.loss_dict['loss'] += loss.item()
-        self.loss_dict['loss_class'] += loss_class.item()
-        self.loss_dict['loss_domain'] += loss_domain.item()
+        self.loss_dict['loss_train'] += loss.item()
+        self.loss_dict['loss_class_train'] += loss_class.item()
+        self.loss_dict['loss_domain_train'] += loss_domain.item()
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
@@ -185,7 +193,6 @@ class DANN(Algorithm):
     def validate(self, minibatch):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
-
         self.featurizer.eval()
         self.classifier.eval()
 
@@ -199,32 +206,34 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict_val['loss_class'] += loss_class.item()
-        return num_corrects
+        self.loss_dict['loss_class_val'] += loss_class.item()
+        return num_corrects.cpu().numpy(), pred.cpu().numpy(), all_y.cpu().numpy()
     
     def save_ckpt(self, epoch, results_dir):
         checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
         state_dict = {
             'epoch': epoch,
-            'featurizer': self.featurizer.modules.state_dict(),
-            'classifier': self.classifier.modules.state_dict(),
-            'discriminator': self.discriminator.modules.state_dict(),
+            'featurizer': self.featurizer.state_dict(),
+            'classifier': self.classifier.state_dict(),
+            'discriminator': self.discriminator.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
-            'cuda_rng': torch.cuda.get_rng_state(),
             'np_random': np.random.get_state(),
         }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path)
+        state_dict = torch.load(checkpoint_path, weights_only=False)
         epoch = state_dict['epoch']
-        self.featurizer.modules.load_state_dict(state_dict['featurizer'])
-        self.classifier.modules.load_state_dict(state_dict['classifier'])
-        self.discriminator.modules.load_state_dict(state_dict['discriminator'])
+        self.featurizer.load_state_dict(state_dict['featurizer'])
+        self.classifier.load_state_dict(state_dict['classifier'])
+        self.discriminator.load_state_dict(state_dict['discriminator'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
-        torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return epoch
 

@@ -20,6 +20,7 @@ def init_train(cfg, args):
         raise ValueError(f'{results_dir} Already existed!')
     
     os.makedirs(results_dir)
+    os.makedirs(os.path.join(results_dir, 'ckpts'))
     shutil.copy('./configs/config.yaml', results_dir)
 
     '''
@@ -29,10 +30,32 @@ def init_train(cfg, args):
     '''
         get algorithm
     '''
-    algo = get_algo(cfg)
+    algo = get_algo(cfg, args)
 
 
     return algo, train_loader, val_loader, results_dir
+
+def init_test(cfg, args):
+    results_dir = os.path.join('./results', cfg['dataset']['dataset'], cfg['train_id'])
+    ckpts_dir = os.path.join(results_dir, 'ckpts')
+    
+    if cfg['test']['ckpt_dir'] == 'None':
+        ckpt_file = os.listdir(ckpts_dir)[-1]
+    else:
+        ckpt_file = cfg['test']['ckpt']
+
+    ckpt_path = os.path.join(ckpts_dir, ckpt_file)
+    '''
+        get dataloader
+    '''
+    test_loader = get_dataloader(cfg, args, 'test')
+    '''
+        get algorithm
+    '''
+    algo = get_algo(cfg, args)
+    algo.load_ckpt(ckpt_path)
+
+    return algo, test_loader, results_dir
 
 
 
