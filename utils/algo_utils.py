@@ -79,7 +79,7 @@ class ERM(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        self.loss_dict['train']['loss_class'] += loss.item().cpu().numpy()
+        self.loss_dict['train']['loss_class'] += loss.item()
         self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def init_loss_dict(self):
@@ -110,7 +110,7 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item().cpu().numpy()
+        self.loss_dict['val']['loss_class'] += loss_class.item()
         self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
@@ -211,9 +211,9 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()    
 
-        self.loss_dict['train']['loss'] += loss.item().cpu().numpy()
-        self.loss_dict['train']['loss_class'] += loss_class.item().cpu().numpy()
-        self.loss_dict['train']['loss_domain'] += loss_domain.item().cpu().numpy()
+        self.loss_dict['train']['loss'] += loss.item()
+        self.loss_dict['train']['loss_class'] += loss_class.item()
+        self.loss_dict['train']['loss_domain'] += loss_domain.item()
         self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def predict(self, x):
@@ -239,7 +239,7 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item().cpu().numpy()
+        self.loss_dict['val']['loss_class'] += loss_class.item()
         self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
