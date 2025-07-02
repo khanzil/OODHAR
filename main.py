@@ -47,10 +47,10 @@ def main():
                 print("")
             algo.save_ckpt(epoch, results_dir)
 
-        output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
-        for dic in loss_list:
-            json.dump(dic, output_file)
-            output_file.write("\n")
+            output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
+            for dic in loss_list:
+                json.dump(dic, output_file)
+                output_file.write("\n")
 
     if args.mode == 'test':
         algo, test_loader, results_dir = init_test(cfg, args)
