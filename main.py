@@ -21,26 +21,33 @@ def main():
             '''
                 Perform training
             '''
-            iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-            for batch_idx, minibatch in enumerate(iterator):       
-                algo.update(minibatch)
+            # iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
+            # for batch_idx, minibatch in enumerate(iterator):       
+            #     algo.update(minibatch)
 
             '''
                 Calculate loss on validation set
             '''
-            iterator = tqdm(val_loader, total=len(val_loader), unit='batch', position=0, leave=True)
-            num_corrects = 0
-            num_samples = 0
-            for batch_idx, minibatch in enumerate(iterator):
-                num_samples += minibatch.batch_feature.shape[0]
-                n, _, _ = algo.validate(minibatch)
-                num_corrects += n
-
+            # iterator = tqdm(val_loader, total=len(val_loader), unit='batch', position=0, leave=True)
+            # for batch_idx, minibatch in enumerate(iterator):
+            #     _, _ = algo.validate(minibatch)
+            algo.loss_dict['train']['loader_len'] = 1
+            algo.loss_dict['val']['loader_len'] = 1
+            for train_val in algo.loss_dict.keys():
+                for key in algo.loss_dict[train_val].keys():
+                    # if key == 'loader_len':
+                    #     continue
+                    algo.loss_dict[train_val][key] /= float(algo.loss_dict[train_val]['loader_len'])
             loss_list.append(algo.loss_dict)
+
             print(f'Epoch {epoch+1}/{num_epochs}: ')
-            for key in loss_list[-1].keys():
-                print(f'{key}: {loss_list[-1][key]:.5f},  ', end="")
-            print("")
+            for train_val in loss_list[-1].keys():
+                print(f'{train_val}: ', end="")
+                for key in loss_list[-1][train_val].keys():
+                    # if key == 'loader_len':
+                    #     continue
+                    print(f'{key}: {loss_list[-1][train_val][key]},  ', end="")
+                print("")
             algo.save_ckpt(epoch, results_dir)
 
         output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
@@ -52,16 +59,13 @@ def main():
         algo, test_loader, results_dir = init_test(cfg, args)
         
         iterator = tqdm(test_loader, total=len(test_loader), unit='batch', position=0, leave=True)
-        num_corrects = 0
-        num_samples = 0
-        infer_dict = {'pred' : [], 'all_y' : []}
+        infer_dict = {'acc' : 0, 'pred' : [], 'all_y' : []}
 
         for batch_idx, minibatch in enumerate(iterator):
-            num_samples += minibatch.batch_feature.shape[0]
-            n, pred, y = algo.validate(minibatch)
+            pred, y = algo.validate(minibatch)
             infer_dict['pred'].extend(pred.tolist())
             infer_dict['all_y'].extend(y.tolist())
-
+        infer_dict['acc'] =float(algo.loss_dict['val']['acc'])/float(algo.loss_dict['val']['loader_len'])
         output_file = open(os.path.join(results_dir, 'infer_dict'), 'w', encoding='utf-8')
         json.dump(infer_dict, output_file) 
 

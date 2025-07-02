@@ -57,8 +57,14 @@ class ERM(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
         
-        self.loss_dict = {'loss_class_train': 0,
-                          'loss_class_val' : 0}
+        self.loss_dict = {'train' : {'loss_class': 0,
+                                     'loader_len': 0
+                                     },
+                          'val'   : {'loss_class' : 0,
+                                     'acc' : 0,
+                                     'loader_len' : 0
+                                     }
+                          }
         
     def update(self, minibatch, unlabeled=None):
         all_x = minibatch.batch_feature
@@ -69,11 +75,13 @@ class ERM(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        self.loss_dict['loss_class_train'] += loss.item()
+        self.loss_dict['train']['loss_class'] += loss.item()
+        self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def init_loss_dict(self):
-        for key in self.loss_dict:
-            self.loss_dict[key] = 0
+        for train_val in self.loss_dict:
+            for key in self.loss_dict[train_val]:
+                self.loss_dict[train_val][key] = 0
 
     def predict(self, x):
         return self.network(x)
@@ -94,8 +102,10 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['loss_class_val'] += loss_class.item()
-        return num_corrects.cpu().numpy(), pred.cpu().numpy(), all_y.cpu().numpy()
+        self.loss_dict['val']['loss_class'] += loss_class.item()
+        self.loss_dict['val']['acc'] += num_corrects
+        self.loss_dict['val']['loader_len'] += all_x.shape[0]
+        return pred.cpu().numpy(), all_y.cpu().numpy()
 
     def save_ckpt(self, epoch, results_dir):
         checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
@@ -156,10 +166,16 @@ class DANN(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
         
-        self.loss_dict = {'loss_train': 0,
-                          'loss_class_train': 0,
-                          'loss_domain_train': 0,
-                          'loss_class_val': 0}
+        self.loss_dict = {'train'   : {'loss_train': 0, 
+                                       'loss_class_train': 0,
+                                       'loss_domain_train': 0,
+                                       'loader_len' : 0
+                                       },
+                          'val'      : {'loss_class': 0,
+                                        'acc' : 0,
+                                        'loader_len': 0
+                                        }
+                          }
 
     def init_loss_dict(self):
         for key in self.loss_dict:
@@ -183,9 +199,10 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()    
 
-        self.loss_dict['loss_train'] += loss.item()
-        self.loss_dict['loss_class_train'] += loss_class.item()
-        self.loss_dict['loss_domain_train'] += loss_domain.item()
+        self.loss_dict['train']['loss'] += loss.item()
+        self.loss_dict['train']['loss_class'] += loss_class.item()
+        self.loss_dict['train']['loss_domain'] += loss_domain.item()
+        self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
@@ -206,8 +223,11 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['loss_class_val'] += loss_class.item()
-        return num_corrects.cpu().numpy(), pred.cpu().numpy(), all_y.cpu().numpy()
+        self.loss_dict['val']['loss_class'] += loss_class.item()
+        self.loss_dict['val']['acc'] += num_corrects
+        self.loss_dict['val']['loader_len'] += all_x.shape[0]
+        return pred.cpu().numpy(), all_y.cpu().numpy()
+
     
     def save_ckpt(self, epoch, results_dir):
         checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
