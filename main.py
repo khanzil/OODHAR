@@ -32,22 +32,18 @@ def main():
             for batch_idx, minibatch in enumerate(iterator):
                 _, _ = algo.validate(minibatch)
 
-            algo.loss_dict['train']['loader_len'] = 1
-            algo.loss_dict['val']['loader_len'] = 1
             for train_val in algo.loss_dict.keys():
                 for key in algo.loss_dict[train_val].keys():
-                    # if key == 'loader_len':
-                    #     continue
-                    algo.loss_dict[train_val][key] /= float(algo.loss_dict[train_val]['loader_len'])
+                    if key == 'loader_len':
+                        continue
+                    algo.loss_dict[train_val][key] = algo.loss_dict[train_val][key]/algo.loss_dict[train_val]['loader_len']
             loss_list.append(algo.loss_dict)
 
             print(f'Epoch {epoch+1}/{num_epochs}: ')
             for train_val in loss_list[-1].keys():
                 print(f'{train_val}: ', end="")
                 for key in loss_list[-1][train_val].keys():
-                    # if key == 'loader_len':
-                    #     continue
-                    print(f'{key}: {loss_list[-1][train_val][key]},  ', end="")
+                    print(f'{key}: {loss_list[-1][train_val][key]:.5f},  ', end="")
                 print("")
             algo.save_ckpt(epoch, results_dir)
 

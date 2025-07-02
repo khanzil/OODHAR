@@ -1,4 +1,4 @@
-train_id: no1
+train_id: no2
 algorithm: ERM
 load_checkpoint: None
 dataset:

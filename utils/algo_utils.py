@@ -57,12 +57,12 @@ class ERM(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
         
-        self.loss_dict = {'train' : {'loss_class': 0,
-                                     'loader_len': 0
+        self.loss_dict = {'train' : {'loss_class': 0.0,
+                                     'loader_len': 0.0
                                      },
-                          'val'   : {'loss_class' : 0,
-                                     'acc' : 0,
-                                     'loader_len' : 0
+                          'val'   : {'loss_class' : 0.0,
+                                     'acc' : 0.0,
+                                     'loader_len' : 0.0
                                      }
                           }
         
@@ -81,7 +81,7 @@ class ERM(Algorithm):
     def init_loss_dict(self):
         for train_val in self.loss_dict:
             for key in self.loss_dict[train_val]:
-                self.loss_dict[train_val][key] = 0
+                self.loss_dict[train_val][key] = 0.0
 
     def predict(self, x):
         return self.network(x)
@@ -103,7 +103,7 @@ class ERM(Algorithm):
         self.classifier.train()
 
         self.loss_dict['val']['loss_class'] += loss_class.item()
-        self.loss_dict['val']['acc'] += num_corrects
+        self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
@@ -166,20 +166,20 @@ class DANN(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
         
-        self.loss_dict = {'train'   : {'loss_train': 0, 
-                                       'loss_class_train': 0,
-                                       'loss_domain_train': 0,
-                                       'loader_len' : 0
+        self.loss_dict = {'train'   : {'loss_train': 0.0, 
+                                       'loss_class_train': 0.0,
+                                       'loss_domain_train': 0.0,
+                                       'loader_len' : 0.0
                                        },
-                          'val'      : {'loss_class': 0,
-                                        'acc' : 0,
-                                        'loader_len': 0
+                          'val'      : {'loss_class': 0.0,
+                                        'acc' : 0.0,
+                                        'loader_len': 0.0
                                         }
                           }
 
     def init_loss_dict(self):
         for key in self.loss_dict:
-            self.loss_dict[key] = 0
+            self.loss_dict[key] = 0.0
 
     def update(self, minibatch):
         all_x = minibatch.batch_feature
@@ -224,7 +224,7 @@ class DANN(Algorithm):
         self.classifier.train()
 
         self.loss_dict['val']['loss_class'] += loss_class.item()
-        self.loss_dict['val']['acc'] += num_corrects
+        self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
