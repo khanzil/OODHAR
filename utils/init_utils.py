@@ -18,7 +18,7 @@ collate_fns = {
 }
 
 def get_algo(cfg, args):
-    algo = algos[cfg['algorithm']](cfg)
+    algo = algos[cfg['algorithm']](cfg, args)
     if not args.no_cuda:
         algo.cuda()
     return algo

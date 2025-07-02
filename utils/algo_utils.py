@@ -37,9 +37,9 @@ class Algorithm(nn.Module):
         raise NotImplementedError
 
 class ERM(Algorithm):
-    def __init__ (self, cfg):
+    def __init__ (self, cfg, args):
         super().__init__()
-        self.cfg = cfg
+        self.no_cuda = args.no_cuda
         self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
@@ -69,13 +69,17 @@ class ERM(Algorithm):
     def update(self, minibatch, unlabeled=None):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
+        if not self.no_cuda:
+            all_x = all_x.cuda()
+            all_y = all_y.cuda()
+
         loss = self.loss_type(self.predict(all_x), all_y)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        self.loss_dict['train']['loss_class'] += loss.item()
+        self.loss_dict['train']['loss_class'] += loss.item().cpu().numpy()
         self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def init_loss_dict(self):
@@ -89,6 +93,10 @@ class ERM(Algorithm):
     def validate(self, minibatch):  
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
+        if not self.no_cuda:
+            all_x = all_x.cuda()
+            all_y = all_y.cuda()
+
         self.featurizer.eval()
         self.classifier.eval()
 
@@ -102,7 +110,7 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item()
+        self.loss_dict['val']['loss_class'] += loss_class.item().cpu().numpy()
         self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
@@ -133,9 +141,9 @@ class ERM(Algorithm):
 
 
 class DANN(Algorithm):
-    def __init__ (self, cfg):
+    def __init__ (self, cfg, args):
         super().__init__()
-        self.cfg = cfg
+        self.no_cuda = args.no_cuda
         self.lambd = cfg['algo']['lambda']
         self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
@@ -185,6 +193,10 @@ class DANN(Algorithm):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
         all_d = minibatch.batch_domain
+        if not self.no_cuda:
+            all_x = all_x.cuda()
+            all_y = all_y.cuda()
+            all_d = all_d.cuda()
 
         all_z = self.featurizer(all_x)
 
@@ -199,9 +211,9 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()    
 
-        self.loss_dict['train']['loss'] += loss.item()
-        self.loss_dict['train']['loss_class'] += loss_class.item()
-        self.loss_dict['train']['loss_domain'] += loss_domain.item()
+        self.loss_dict['train']['loss'] += loss.item().cpu().numpy()
+        self.loss_dict['train']['loss_class'] += loss_class.item().cpu().numpy()
+        self.loss_dict['train']['loss_domain'] += loss_domain.item().cpu().numpy()
         self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def predict(self, x):
@@ -210,6 +222,10 @@ class DANN(Algorithm):
     def validate(self, minibatch):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
+        if not self.no_cuda:
+            all_x = all_x.cuda()
+            all_y = all_y.cuda()
+
         self.featurizer.eval()
         self.classifier.eval()
 
@@ -223,7 +239,7 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item()
+        self.loss_dict['val']['loss_class'] += loss_class.item().cpu().numpy()
         self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
         self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
