@@ -21,16 +21,17 @@ def main():
             '''
                 Perform training
             '''
-            # iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-            # for batch_idx, minibatch in enumerate(iterator):       
-            #     algo.update(minibatch)
+            iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
+            for batch_idx, minibatch in enumerate(iterator):       
+                algo.update(minibatch)
 
             '''
                 Calculate loss on validation set
             '''
-            # iterator = tqdm(val_loader, total=len(val_loader), unit='batch', position=0, leave=True)
-            # for batch_idx, minibatch in enumerate(iterator):
-            #     _, _ = algo.validate(minibatch)
+            iterator = tqdm(val_loader, total=len(val_loader), unit='batch', position=0, leave=True)
+            for batch_idx, minibatch in enumerate(iterator):
+                _, _ = algo.validate(minibatch)
+
             algo.loss_dict['train']['loader_len'] = 1
             algo.loss_dict['val']['loader_len'] = 1
             for train_val in algo.loss_dict.keys():

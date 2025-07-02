@@ -16,12 +16,12 @@ def init_train(cfg, args):
         create directories
     '''
     results_dir = os.path.join('./results', cfg['dataset']['dataset'], cfg['train_id'])
-    if os.path.isdir(results_dir):
-        raise ValueError(f'{results_dir} Already existed!')
-    
-    os.makedirs(results_dir)
-    os.makedirs(os.path.join(results_dir, 'ckpts'))
-    shutil.copy('./configs/config.yaml', results_dir)
+    if cfg['load_checkpoint'] == 'None':
+        if os.path.isdir(results_dir):
+            raise ValueError(f'{results_dir} Already existed!')
+
+        os.makedirs(os.path.join(results_dir, 'ckpts'))
+        shutil.copy('./configs/config.yaml', results_dir)
 
     '''
         get dataloader
