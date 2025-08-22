@@ -8,11 +8,11 @@ dataset:
   domain: folder
   num_classes: 6
   num_domains: 5
-  val_fold: 6 February 2019 NG Homes Dataset
+  val_fold: None
   test_fold: 7 March 2019 West Cumbria Dataset
 
 algo:
-  learning_rate: 0.001
+  learning_rate: 0.0001
   weight_decay: 0.1
   loss_type: CrossEntropy
   # DANN  

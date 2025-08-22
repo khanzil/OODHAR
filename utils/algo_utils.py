@@ -58,6 +58,7 @@ class ERM(Algorithm):
             raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
         
         self.loss_dict = {'train' : {'loss_class': 0.0,
+                                     'acc' : 0.0,
                                      'loader_len': 0.0
                                      },
                           'val'   : {'loss_class' : 0.0,
@@ -79,9 +80,6 @@ class ERM(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        self.loss_dict['train']['loss_class'] += loss.item()
-        self.loss_dict['train']['loader_len'] += all_x.shape[0]
-
     def init_loss_dict(self):
         for train_val in self.loss_dict:
             for key in self.loss_dict[train_val]:
@@ -90,7 +88,7 @@ class ERM(Algorithm):
     def predict(self, x):
         return self.network(x)
 
-    def validate(self, minibatch):  
+    def validate(self, minibatch, istrain=False):  
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
         if not self.no_cuda:
@@ -110,9 +108,14 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item()
-        self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
-        self.loss_dict['val']['loader_len'] += all_x.shape[0]
+        if istrain:
+            self.loss_dict['train']['loss_class'] += loss_class.item()
+            self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['train']['loader_len'] += all_x.shape[0]
+        else:
+            self.loss_dict['val']['loss_class'] += loss_class.item()
+            self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
     def save_ckpt(self, epoch, results_dir):
@@ -177,6 +180,7 @@ class DANN(Algorithm):
         self.loss_dict = {'train'   : {'loss_train': 0.0, 
                                        'loss_class_train': 0.0,
                                        'loss_domain_train': 0.0,
+                                       'acc' : 0.0,
                                        'loader_len' : 0.0
                                        },
                           'val'      : {'loss_class': 0.0,
@@ -211,27 +215,36 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()    
 
-        self.loss_dict['train']['loss'] += loss.item()
-        self.loss_dict['train']['loss_class'] += loss_class.item()
-        self.loss_dict['train']['loss_domain'] += loss_domain.item()
-        self.loss_dict['train']['loader_len'] += all_x.shape[0]
+        # self.loss_dict['train']['loss'] += loss.item()
+        # self.loss_dict['train']['loss_class'] += loss_class.item()
+        # self.loss_dict['train']['loss_domain'] += loss_domain.item()
+        # self.loss_dict['train']['loader_len'] += all_x.shape[0]
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
 
-    def validate(self, minibatch):
+    def validate(self, minibatch, istrain=False):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
+        all_d = minibatch.batch_domain
+        
         if not self.no_cuda:
             all_x = all_x.cuda()
             all_y = all_y.cuda()
+            all_d = all_d.cuda()
 
         self.featurizer.eval()
         self.classifier.eval()
 
         with torch.no_grad():
-            pred = self.predict(all_x)
+            all_z = self.featurizer(all_x)
+
+            pred = self.classifier(all_z)
+            pred_d = self.discriminator(all_z)
+
             loss_class = self.loss_type(pred, all_y)
+            loss_domain = self.loss_type_d(pred_d, all_d) 
+            loss = loss_class + loss_domain * self.lambd
 
             _, pred = pred.max(1) # same as np.argmax()
             num_corrects = torch.eq(pred, all_y).sum()
@@ -239,9 +252,16 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        self.loss_dict['val']['loss_class'] += loss_class.item()
-        self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
-        self.loss_dict['val']['loader_len'] += all_x.shape[0]
+        if istrain:
+            self.loss_dict['train']['loss'] += loss.item()
+            self.loss_dict['train']['loss_class'] += loss_class.item()
+            self.loss_dict['train']['loss_domain'] += loss_domain.item()
+            self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['train']['loader_len'] += all_x.shape[0]
+        else:
+            self.loss_dict['val']['loss_class'] += loss_class.item()
+            self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
     

@@ -24,6 +24,7 @@ def main():
             iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
             for batch_idx, minibatch in enumerate(iterator):       
                 algo.update(minibatch)
+                algo.validata(minibatch,istrain=True)
 
             '''
                 Calculate loss on validation set
