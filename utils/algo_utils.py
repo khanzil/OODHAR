@@ -190,14 +190,15 @@ class DANN(Algorithm):
                           }
 
     def init_loss_dict(self):
-        for key in self.loss_dict:
-            self.loss_dict[key] = 0.0
+        for train_val in self.loss_dict:
+            for key in self.loss_dict[train_val]:
+                self.loss_dict[train_val][key] = 0.0
 
     def update(self, minibatch):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
         all_d = minibatch.batch_domain
-        print(min(all_d), max(all_d))
+
         if not self.no_cuda:
             all_x = all_x.cuda()
             all_y = all_y.cuda()
