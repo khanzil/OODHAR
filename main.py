@@ -23,7 +23,7 @@ def main():
             '''
             iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
             for batch_idx, minibatch in enumerate(iterator):
-                   
+
                 algo.update(minibatch)
                 algo.validate(minibatch,istrain=True)
 
@@ -66,6 +66,7 @@ def main():
             infer_dict['all_y'].extend(y.tolist())
         infer_dict['acc'] =float(algo.loss_dict['val']['acc'])/float(algo.loss_dict['val']['loader_len'])
         output_file = open(os.path.join(results_dir, 'infer_dict'), 'w', encoding='utf-8')
+        print(infer_dict['acc'])
         json.dump(infer_dict, output_file) 
 
 

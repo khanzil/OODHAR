@@ -198,7 +198,6 @@ class DANN(Algorithm):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
         all_d = minibatch.batch_domain
-
         if not self.no_cuda:
             all_x = all_x.cuda()
             all_y = all_y.cuda()
@@ -242,11 +241,12 @@ class DANN(Algorithm):
             all_z = self.featurizer(all_x)
 
             pred = self.classifier(all_z)
-            pred_d = self.discriminator(all_z)
-
             loss_class = self.loss_type(pred, all_y)
-            loss_domain = self.loss_type_d(pred_d, all_d) 
-            loss = loss_class + loss_domain * self.lambd
+
+            if istrain:
+                pred_d = self.discriminator(all_z)
+                loss_domain = self.loss_type_d(pred_d, all_d) 
+                loss = loss_class + loss_domain * self.lambd
 
             _, pred = pred.max(1) # same as np.argmax()
             num_corrects = torch.eq(pred, all_y).sum()

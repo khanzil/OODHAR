@@ -1,4 +1,4 @@
-train_id: no2
+train_id: no1
 algorithm: DANN
 load_checkpoint: None
 dataset:
@@ -7,8 +7,8 @@ dataset:
   feature_type: v_heatmap
   domain: folder
   num_classes: 6
-  num_domains: 6
-  val_fold: None
+  num_domains: 5
+  val_fold: 6 February 2019 NG Homes Dataset
   test_fold: 7 March 2019 West Cumbria Dataset
 
 algo:
