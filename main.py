@@ -22,7 +22,8 @@ def main():
                 Perform training
             '''
             iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-            for batch_idx, minibatch in enumerate(iterator):       
+            for batch_idx, minibatch in enumerate(iterator):
+                   
                 algo.update(minibatch)
                 algo.validate(minibatch,istrain=True)
 

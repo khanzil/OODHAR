@@ -1,5 +1,5 @@
 train_id: no2
-algorithm: ERM
+algorithm: DANN
 load_checkpoint: None
 dataset:
   rootdir: ./dataset
@@ -7,12 +7,12 @@ dataset:
   feature_type: v_heatmap
   domain: folder
   num_classes: 6
-  num_domains: 5
+  num_domains: 6
   val_fold: None
   test_fold: 7 March 2019 West Cumbria Dataset
 
 algo:
-  learning_rate: 0.0001
+  learning_rate: 5e-6
   weight_decay: 0.1
   loss_type: CrossEntropy
   # DANN  

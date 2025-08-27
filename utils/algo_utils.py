@@ -177,9 +177,9 @@ class DANN(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
         
-        self.loss_dict = {'train'   : {'loss_train': 0.0, 
-                                       'loss_class_train': 0.0,
-                                       'loss_domain_train': 0.0,
+        self.loss_dict = {'train'   : {'loss': 0.0, 
+                                       'loss_class': 0.0,
+                                       'loss_domain': 0.0,
                                        'acc' : 0.0,
                                        'loader_len' : 0.0
                                        },
@@ -197,6 +197,7 @@ class DANN(Algorithm):
         all_x = minibatch.batch_feature
         all_y = minibatch.batch_label
         all_d = minibatch.batch_domain
+        print(min(all_d), max(all_d))
         if not self.no_cuda:
             all_x = all_x.cuda()
             all_y = all_y.cuda()
