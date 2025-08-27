@@ -47,7 +47,8 @@ def main():
                 for key in loss_list[-1][train_val].keys():
                     print(f'{key}: {loss_list[-1][train_val][key]:.5f},  ', end="")
                 print("")
-            algo.save_ckpt(epoch, results_dir)
+            if epoch >= 0.85*num_epochs:
+                algo.save_ckpt(epoch, results_dir)
 
             output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
             for dic in loss_list:
