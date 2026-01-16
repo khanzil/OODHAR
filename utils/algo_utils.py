@@ -4,41 +4,45 @@ import numpy as np
 import os
 from utils.networks_utils import Featurizer, Classifier, GRL
 
-class Algorithm(nn.Module):
-    """
-    A subclass of Algorithm implements a domain generalization algorithm.
-    Subclasses should implement the following:
-    - update()
-    - predict()
-    """
+class Algorithm():
     def __init__(self):
-        super().__init__()
+        pass
 
     def update(self, minibatch, unlabeled=None):
-        """
-        Perform one update step, given a list of (x, y) tuples for all
-        environments.
-
-        Admits an optional list of unlabeled minibatch from the test domains,
-        when task is domain_adaptation.
-        """
+        '''
+            Perform 1 minibatch update, add loss to self.loss_dict
+        '''
         raise NotImplementedError
 
     def predict(self, x):
+        '''
+            Perform 1 minibatch predict
+        '''
         raise NotImplementedError
     
     def validate(self):
+        '''
+            Perform 1 minibatch validation, add accuracy to self.loss_dict
+        '''
         raise NotImplementedError
+
+    def init_loss_dict(self):
+        '''
+            Reset loss_dict, used before each epoch
+        '''
+        if hasattr(self, 'lost_dict'):
+            for train_val in self.loss_dict:
+                for key in self.loss_dict[train_val]:
+                    self.loss_dict[train_val][key] = 0.0
 
     def save_ckpt(self):
         raise NotImplementedError
 
     def load_ckpt(self):
-        raise NotImplementedError
+        raise NotImplementedError   
 
 class ERM(Algorithm):
     def __init__ (self, cfg, args):
-        super().__init__()
         self.no_cuda = args.no_cuda
         self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
@@ -53,16 +57,16 @@ class ERM(Algorithm):
                                           weight_decay=cfg['algo']['weight_decay'])
         
         if cfg['algo']['loss_type'] == 'CrossEntropy':
-            self.loss_type = nn.CrossEntropyLoss() 
+            self.loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
-        
+
         self.loss_dict = {'train' : {'loss_class': 0.0,
-                                     'acc' : 0.0,
+                                     'n_corrects' : 0.0,
                                      'loader_len': 0.0
                                      },
                           'val'   : {'loss_class' : 0.0,
-                                     'acc' : 0.0,
+                                     'n_corrects' : 0.0,
                                      'loader_len' : 0.0
                                      }
                           }
@@ -79,11 +83,6 @@ class ERM(Algorithm):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-    def init_loss_dict(self):
-        for train_val in self.loss_dict:
-            for key in self.loss_dict[train_val]:
-                self.loss_dict[train_val][key] = 0.0
 
     def predict(self, x):
         return self.network(x)
@@ -110,11 +109,11 @@ class ERM(Algorithm):
 
         if istrain:
             self.loss_dict['train']['loss_class'] += loss_class.item()
-            self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['train']['n_corrects'] += num_corrects.cpu().numpy()
             self.loss_dict['train']['loader_len'] += all_x.shape[0]
         else:
             self.loss_dict['val']['loss_class'] += loss_class.item()
-            self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['val']['n_corrects'] += num_corrects.cpu().numpy()
             self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
@@ -142,10 +141,8 @@ class ERM(Algorithm):
         np.random.set_state(state_dict['np_random'])
         return epoch
 
-
 class DANN(Algorithm):
     def __init__ (self, cfg, args):
-        super().__init__()
         self.no_cuda = args.no_cuda
         self.lambd = cfg['algo']['lambda']
         self.featurizer = Featurizer(cfg)
@@ -180,19 +177,15 @@ class DANN(Algorithm):
         self.loss_dict = {'train'   : {'loss': 0.0, 
                                        'loss_class': 0.0,
                                        'loss_domain': 0.0,
-                                       'acc' : 0.0,
+                                       'n_corrects' : 0.0,
                                        'loader_len' : 0.0
                                        },
                           'val'      : {'loss_class': 0.0,
-                                        'acc' : 0.0,
+                                        'n_corrects' : 0.0,
                                         'loader_len': 0.0
                                         }
                           }
 
-    def init_loss_dict(self):
-        for train_val in self.loss_dict:
-            for key in self.loss_dict[train_val]:
-                self.loss_dict[train_val][key] = 0.0
 
     def update(self, minibatch):
         all_x = minibatch.batch_feature
@@ -209,7 +202,7 @@ class DANN(Algorithm):
         pred_d = self.discriminator(all_z)
 
         loss_class = self.loss_type(pred, all_y)
-        loss_domain = self.loss_type_d(pred_d, all_d) 
+        loss_domain = self.loss_type_d(pred_d, all_d)
         loss = loss_class + loss_domain * self.lambd
 
         self.optimizer.zero_grad()
@@ -258,15 +251,14 @@ class DANN(Algorithm):
             self.loss_dict['train']['loss'] += loss.item()
             self.loss_dict['train']['loss_class'] += loss_class.item()
             self.loss_dict['train']['loss_domain'] += loss_domain.item()
-            self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['train']['n_corrects'] += num_corrects.cpu().numpy()
             self.loss_dict['train']['loader_len'] += all_x.shape[0]
         else:
             self.loss_dict['val']['loss_class'] += loss_class.item()
-            self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
+            self.loss_dict['val']['n_corrects'] += num_corrects.cpu().numpy()
             self.loss_dict['val']['loader_len'] += all_x.shape[0]
         return pred.cpu().numpy(), all_y.cpu().numpy()
 
-    
     def save_ckpt(self, epoch, results_dir):
         checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
         state_dict = {
