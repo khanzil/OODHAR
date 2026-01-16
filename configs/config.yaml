@@ -1,5 +1,5 @@
-train_id: no1
-algorithm: DANN
+train_id: no2
+algorithm: ERM
 load_checkpoint: None
 dataset:
   rootdir: ./dataset

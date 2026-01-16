@@ -18,33 +18,19 @@ def main():
         loss_list = []
 
         for epoch in range(num_epochs-cur_epoch):
-            algo.init_loss_dict() # reset loss_dict, do nothing if loss_dict dont exist
-            
-            
+            algo.init_loss_dict(trainval='all') # reset loss_dict, do nothing if loss_dict dont exist
             '''
                 Perform training
             '''
-            iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-            for batch_idx, minibatch in enumerate(iterator):
-                algo.update(minibatch)
-                algo.validate(minibatch,istrain=True)
-
+            algo.train_step(train_loader)
 
             '''
-                Calculate loss on validation set
+                Calculate metrics on validation set and train. Train loss is already calculated during training
             '''
-            iterator = tqdm(val_loader, total=len(val_loader), unit='batch', position=0, leave=True)
-            for batch_idx, minibatch in enumerate(iterator):
-                algo.validate(minibatch)
+            algo.validate_step(train_loader, trainval='train')
+            algo.validate_step(val_loader, trainval='val')
 
-            for train_val in algo.loss_dict.keys():
-                for key in algo.loss_dict[train_val].keys():
-                    if key == 'loader_len':
-                        continue
-                    algo.loss_dict[train_val][key] = algo.loss_dict[train_val][key]/algo.loss_dict[train_val]['loader_len']
-            
             loss_list.append(algo.loss_dict) # add validation results to loss_list
-
 
             '''
                 Print and save validation results after every epoch
@@ -60,27 +46,26 @@ def main():
                 json.dump(dic, output_file)
                 output_file.write("\n")
 
-
             '''
                 Save the last 15% checkpoints and the best one
             '''
             if epoch >= 0.85*num_epochs: # save last 15% check_points
-                algo.save_ckpt(epoch, results_dir)
-            
+                algo.save_ckpt(epoch, results_dir)    
 
     if args.mode == 'test': # for testing process, all predictions will be save for future use if needed 
         algo, test_loader, results_dir = init_test(cfg, args)
         
-        iterator = tqdm(test_loader, total=len(test_loader), unit='batch', position=0, leave=True)
+
         infer_dict = {'acc' : 0, 'pred' : [], 'all_y' : []}
 
-        for batch_idx, minibatch in enumerate(iterator):
-            pred, y = algo.validate(minibatch)
-            infer_dict['pred'].extend(pred.tolist())
-            infer_dict['all_y'].extend(y.tolist())
-        infer_dict['n_correct'] =float(algo.loss_dict['val']['n_correct'])/float(algo.loss_dict['val']['loader_len'])
+        pred_list = algo.validate_step(test_loader, trainval='val')
+
+        infer_dict['pred'] = [pred for pred, _ in pred_list]
+        infer_dict['all_y'] = [y for _, y in pred_list]
+        infer_dict['acc'] = algo.loss_dict['val']['acc']
+
         output_file = open(os.path.join(results_dir, 'infer_dict'), 'w', encoding='utf-8')
-        print(infer_dict['n_correct'])
+        print(infer_dict['acc'])
         json.dump(infer_dict, output_file) 
 
 

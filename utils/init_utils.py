@@ -18,10 +18,7 @@ collate_fns_dict = {
 }
 
 def get_algo(cfg, args):
-    algo = algos_dict[cfg['algorithm']](cfg, args)
-    if not args.no_cuda:
-        algo.cuda()
-    return algo
+    return algos_dict[cfg['algorithm']](cfg, args)
 
 def get_dataloader(cfg, args, trainval_test):
     dataset_dir = os.path.join(cfg['dataset']['rootdir'], cfg['dataset']['dataset']) # directory contains all data folders
@@ -51,8 +48,10 @@ def get_dataloader(cfg, args, trainval_test):
                                         )
         
         else: 
-            if val_folds not in os.listdir(dataset_dir):
-                raise ValueError(f'Val folder {val_folds} not existed')
+            for fold in val_folds:
+                if fold not in os.listdir(dataset_dir):
+                    raise ValueError(f'Val folders {val_folds} not existed in {dataset_dir}')
+            
             train_dataset = datasets_dict[cfg['dataset']['dataset']](train_folds, cfg)
             train_dataloader = DataLoader(dataset=train_dataset,
                                           batch_size=cfg['train']['batch_size'],
@@ -71,8 +70,10 @@ def get_dataloader(cfg, args, trainval_test):
         return train_dataloader, val_dataloader
 
     elif trainval_test == 'test':
-        if test_folds not in os.listdir(dataset_dir):
-            raise ValueError(f'Test folder {test_folds} not existed')
+        for fold in test_folds:
+            if fold not in os.listdir(dataset_dir):
+                raise ValueError(f'Test folder {fold} not existed')
+            
         test_dataset = datasets_dict[cfg['dataset']['dataset']](test_folds, cfg)
         test_dataloader = DataLoader(dataset=test_dataset,
                                      batch_size=cfg['test']['batch_size'],
