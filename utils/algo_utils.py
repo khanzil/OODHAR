@@ -4,6 +4,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 from utils.networks_utils import Featurizer, Classifier, GRL
+import json
 
 class Algorithm():
     '''
@@ -14,19 +15,78 @@ class Algorithm():
 
     def train_step(self, train_loader, unlabeled=None):
         '''
-            Perform 1 minibatch update, add loss to self.loss_dict
+            Perform 1 epoch update, add loss to self.loss_dict
         '''
         raise NotImplementedError
 
+    def train(self, num_epochs, train_loader, ckpt_crit='acc', ckpt_start=0.85, results_dir=None, val_loader=None, cur_epoch = 0):
+        '''
+            Trainer function that performs training over num_epochs epochs.
+        '''
+        loss_list = []
+        self.init_loss_dict(trainval='all')
+        best_score = 0.0
+
+        iterator = tqdm(range(cur_epoch, num_epochs), total=num_epochs-cur_epoch, unit='epoch', position=0, leave=True)
+        for epoch in iterator:
+            self.init_loss_dict(trainval='all')
+            '''
+                Perform training
+            '''
+            self.train_step(train_loader)
+
+            '''
+                Calculate metrics on validation set and train.
+            '''
+            self.validate_step(train_loader, trainval='train')
+            if val_loader is not None:
+                self.validate_step(val_loader, trainval='val')
+
+            loss_list.append({'loss_dict': self.loss_dict}) # add validation results to loss_list
+
+            '''
+                Print and save validation results after every epoch
+            '''
+            print(f'\nEpoch {epoch+1}/{num_epochs}: ')
+            for train_val in loss_list[-1]['loss_dict'].keys():
+                print(f'{train_val}: ', end="")
+                for key in loss_list[-1]['loss_dict'][train_val].keys():
+                    print(f'{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ', end="")
+                print("\n\n")
+
+            '''
+                Save the last ckpt_num% checkpoints and the best val acc
+            '''
+            if epoch >= ckpt_start*num_epochs: # save last ckpt_num*100% check_points
+                self.save_ckpt(epoch, results_dir)
+
+            val_acc = loss_list[-1]['loss_dict']['val']['acc']
+            if val_acc > best_score:
+                best_score = val_acc
+                self.save_ckpt(epoch, results_dir, is_best=True)
+                
+        output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
+        for dic in loss_list:
+            json.dump(dic, output_file)
+            output_file.write("\n")
+        
+        return loss_list
+
     def predict(self, x):
         '''
-            Perform 1 minibatch predict
+            Perform 1 minibatch predict and calculate loss, add loss to self.loss_dict['train']
         '''
         raise NotImplementedError
 
     def validate_step(self, loader, trainval='train'):
         '''
-            Perform 1 minibatch validation, add accuracy to self.loss_dict
+            loader: dataloader for validation
+            trainval: 'train' or 'val'
+
+            Perform validation over the entire loader, the results are stored in self.loss_dict[trainval].
+            Note that in this function, acc is calculated by getting the number of correct predictions then divided by loader_len.
+
+            In case validating on training set, train_loss will not be recalculated.
         '''
         raise NotImplementedError
 
@@ -34,14 +94,13 @@ class Algorithm():
         '''
             Reset loss_dict, used before each epoch
         '''
-        if hasattr(self, 'loss_dict'):
-            if trainval == 'train' or trainval == 'val':
-                for key in self.loss_dict[trainval]:
-                    self.loss_dict[trainval][key] = 0.0
-            elif trainval == 'all':
-                for train_val in self.loss_dict.keys():
-                    for key in self.loss_dict[train_val]:
-                        self.loss_dict[train_val][key] = 0.0
+        if trainval == 'train' or trainval == 'val':
+            for key in self.loss_dict[trainval]:
+                self.loss_dict[trainval][key] = 0.0
+        elif trainval == 'all':
+            for train_val in self.loss_dict.keys():
+                for key in self.loss_dict[train_val]:
+                    self.loss_dict[train_val][key] = 0.0
 
     def save_ckpt(self):
         raise NotImplementedError
@@ -87,8 +146,7 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-        for batch_idx, minibatch in enumerate(iterator):
+        for batch_idx, minibatch in enumerate(train_loader):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
             if not self.no_cuda:
@@ -106,7 +164,6 @@ class ERM(Algorithm):
 
         self.loss_dict['train']['loss_class'] /= self.loss_dict['train']['loader_len']
 
-
     def predict(self, x):
         return self.network(x)
 
@@ -115,8 +172,7 @@ class ERM(Algorithm):
         self.classifier.eval()
         pred_list = []
 
-        iterator = tqdm(loader, total=len(loader), unit='batch', position=0, leave=True)
-        for batch_idx, minibatch in enumerate(iterator):
+        for batch_idx, minibatch in enumerate(loader):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
 
@@ -147,8 +203,12 @@ class ERM(Algorithm):
 
         return pred_list
 
-    def save_ckpt(self, epoch, results_dir):
-        checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+    def save_ckpt(self, epoch, results_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+
         state_dict = {
             'epoch': epoch,
             'network': self.network.state_dict(),
@@ -227,8 +287,7 @@ class DANN(Algorithm):
         self.classifier.train()
         self.discriminator.train()
         
-        iterator = tqdm(train_loader, total=len(train_loader), unit='batch', position=0, leave=True)
-        for batch_idx, minibatch in enumerate(iterator):
+        for batch_idx, minibatch in enumerate(train_loader):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
             all_d = minibatch.batch_domain
@@ -266,8 +325,7 @@ class DANN(Algorithm):
         self.featurizer.eval()
         self.classifier.eval()
 
-        iterator = tqdm(loader, total=len(loader), unit='batch', position=0, leave=True)
-        for batch_idx, minibatch in enumerate(iterator):
+        for batch_idx, minibatch in enumerate(loader):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
             all_d = minibatch.batch_domain
