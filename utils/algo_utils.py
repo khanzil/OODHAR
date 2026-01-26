@@ -51,7 +51,7 @@ class Algorithm():
             for train_val in loss_list[-1]['loss_dict'].keys():
                 print(f'{train_val}: ', end="")
                 for key in loss_list[-1]['loss_dict'][train_val].keys():
-                    print(f'{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ', end="")
+                    print(f"{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ", end="")
                 print("\n\n")
 
             '''
@@ -115,7 +115,7 @@ class ERM(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfg['dataset']['num_classes'],
-            cfg["model"]["nonlinear_classifier"]
+            cfg['model']['nonlinear_classifier']
         )
 
         self.network = nn.Sequential(self.featurizer, self.classifier)
