@@ -19,7 +19,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def train(self, num_epochs, train_loader, ckpt_crit='acc', ckpt_start=0.85, results_dir=None, val_loader=None, cur_epoch = 0):
+    def train(self, num_epochs, train_loader, ckpt_crit='acc', ckpt_start=0.85, results_dir=None, val_loader=None, cur_epoch=0):
         '''
             Trainer function that performs training over num_epochs epochs.
         '''
@@ -47,12 +47,12 @@ class Algorithm():
             '''
                 Print and save validation results after every epoch
             '''
-            print(f'\nEpoch {epoch+1}/{num_epochs}: ')
+            tqdm.write(f'\nEpoch {epoch+1}/{num_epochs}: ')
             for train_val in loss_list[-1]['loss_dict'].keys():
-                print(f'{train_val}: ', end="")
+                tqdm.write(f'{train_val}: ', end="")
                 for key in loss_list[-1]['loss_dict'][train_val].keys():
-                    print(f"{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ", end="")
-                print("\n\n")
+                    tqdm.write(f"{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ", end="")
+                tqdm.write("")
 
             '''
                 Save the last ckpt_num% checkpoints and the best val acc
@@ -362,8 +362,12 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-    def save_ckpt(self, epoch, results_dir):
-        checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+    def save_ckpt(self, epoch, results_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+
         state_dict = {
             'epoch': epoch,
             'featurizer': self.featurizer.state_dict(),
