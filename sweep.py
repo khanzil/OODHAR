@@ -26,6 +26,7 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     cfg_yaml_list = []
     train_id = 0
+    
     for trial_seed in range(args.n_trials):
         # only support single test domain for now
         for test_dom in range(cfg['num_domains']):
@@ -33,15 +34,16 @@ if __name__ == '__main__':
                 new_cfg = get_random_search_configs(cfg, test_dom, train_id)
                 cfg_yaml_list.append(f'./configs/sweep/config_{train_id}.yaml')
 
+                # create config_{i}.yaml for each cfg
                 with open(cfg_yaml_list[-1], 'w') as f:
                     yaml.dump(new_cfg, f)
                 train_id += 1
-                # create config_{i}.yaml for each cfg
+                
 
     # run subprocesses for each congis_{i}.yaml
     for cfg_yaml in cfg_yaml_list:
         print(f'Starting {cfg_yaml}')
-        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4')
+        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4', shell=True)
 
 
 
