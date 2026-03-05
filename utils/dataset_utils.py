@@ -6,7 +6,7 @@ import os
 class Glasgow(Dataset):
     def __init__(self, folds, cfg):
         super().__init__()
-        dataset_dir = os.path.join(cfg['dataset']['rootdir'], cfg['dataset']['dataset'])
+        dataset_dir = os.path.join(cfg['rootdir'], cfg['dataset'])
         self.folds = folds
         self.all_x = []
         self.all_y = []
@@ -16,9 +16,9 @@ class Glasgow(Dataset):
             for file in os.listdir(os.path.join(dataset_dir,fold)):
                 feature_h5_dir = os.path.join(dataset_dir, fold, file)
                 with h5py.File(feature_h5_dir, 'r') as hf:
-                    feature = hf[cfg['dataset']['feature_type']][()] # this has size (samples, range, time) or (samples, range, vel)
+                    feature = hf[cfg['feature_type']][()] # this has size (samples, range, time) or (samples, range, vel)
                     y = hf['label'][()]
-                    d = hf[cfg['dataset']['domain']][()]
+                    d = hf[cfg['domain']][()]
 
                 self.all_x.append(torch.abs(torch.from_numpy(feature)))
                 self.all_y.append(torch.tensor(y)-1)
@@ -71,8 +71,7 @@ class GlasgowCollateCustom:
 def GlasgowCollate(batch):
     return GlasgowCollateCustom(batch)
 
-class GlasgowCollateTest:
-    pass
+
 
         
 

@@ -10,13 +10,13 @@ class MLP(nn.Module):
     def __init__(self, n_inputs, cfg):
         super(MLP, self).__init__()
         self.flat = nn.Flatten()
-        self.input = nn.Linear(n_inputs, cfg['model']['mlp_width'])
-        self.dropout = nn.Dropout(cfg['model']['mlp_dropout'])
+        self.input = nn.Linear(n_inputs, cfg['mlp_width'])
+        self.dropout = nn.Dropout(cfg['mlp_dropout'])
         self.hiddens = nn.ModuleList([
-            nn.Linear(cfg['model']['mlp_width'], cfg['model']['mlp_width'])
-            for _ in range(cfg['model']['mlp_depth']-2)])
-        self.output = nn.Linear(cfg['model']['mlp_width'], cfg['model']['mlp_num_hidden'])
-        self.n_outputs = cfg['model']['mlp_num_hidden']
+            nn.Linear(cfg['mlp_width'], cfg['mlp_width'])
+            for _ in range(cfg['mlp_depth']-2)])
+        self.output = nn.Linear(cfg['mlp_width'], cfg['mlp_num_hidden'])
+        self.n_outputs = cfg['mlp_num_hidden']
         self.activation = nn.Identity() # for URM; does not affect other algorithms
 
     def forward(self, x):
@@ -36,7 +36,7 @@ class ResNet(nn.Module):
     """ResNet with the softmax chopped off and the batchnorm frozen"""
     def __init__(self, input_shape, cfg):
         super(ResNet, self).__init__()
-        if cfg['model']['resnet18']:
+        if cfg['resnet18']:
             self.network = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
             self.n_outputs = 512
         else:
@@ -59,10 +59,10 @@ class ResNet(nn.Module):
         del self.network.fc
         self.network.fc = nn.Identity()
 
-        if cfg['model']['freeze_bn']:
+        if cfg['freeze_bn']:
             self.freeze_bn()
         self.cfg = cfg
-        self.dropout = nn.Dropout(cfg['model']['resnet_dropout'])
+        self.dropout = nn.Dropout(cfg['resnet_dropout'])
         self.activation = nn.Identity() # for URM; does not affect other algorithms
         # torchvision Resnet already have a flatten layer 
 
@@ -75,7 +75,7 @@ class ResNet(nn.Module):
         Override the default train() to freeze the BN parameters
         """
         super().train(mode)
-        if self.cfg['model']["freeze_bn"]:
+        if self.cfg["freeze_bn"]:
             self.freeze_bn()
 
     def freeze_bn(self):
@@ -154,9 +154,9 @@ def Featurizer(cfg):
         Select feature extractor    
     """
 
-    input_shape = [int(item.strip()) for item in cfg['model']['num_inputs'].split(',')]
+    input_shape = [int(item.strip()) for item in cfg['num_inputs'].split(',')]
     
-    match cfg["model"]["featurizer"]:
+    match cfg["featurizer"]:
         case "MLP":
             return MLP(torch.sum(torch.ones(input_shape)).int(), cfg)
         case "MNIST_CNN":

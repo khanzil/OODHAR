@@ -110,23 +110,23 @@ class Algorithm():
 
 class ERM(Algorithm):
     def __init__ (self, cfg, args):
-        self.no_cuda = args.no_cuda
+        self.cuda = args.cuda
         self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
-            cfg['dataset']['num_classes'],
-            cfg['model']['nonlinear_classifier']
+            cfg['num_classes'],
+            cfg['nonlinear_classifier']
         )
 
         self.network = nn.Sequential(self.featurizer, self.classifier)
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
-                                          lr=cfg['algo']['learning_rate'],
-                                          weight_decay=cfg['algo']['weight_decay'])
+                                          lr=cfg['learning_rate'],
+                                          weight_decay=cfg['weight_decay'])
         
-        if cfg['algo']['loss_type'] == 'CrossEntropy':
+        if cfg['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
         else:
-            raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
+            raise NotImplementedError(f"{cfg['loss_type']} is not implemented")
 
         self.loss_dict = {'train' : {'loss_class': 0.0,
                                      'acc' : 0.0,
@@ -138,7 +138,7 @@ class ERM(Algorithm):
                                      }
                           }
         
-        if not self.no_cuda:
+        if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
 
@@ -149,7 +149,7 @@ class ERM(Algorithm):
         for batch_idx, minibatch in enumerate(train_loader):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
-            if not self.no_cuda:
+            if self.cuda:
                 all_x = all_x.cuda()
                 all_y = all_y.cuda()
 
@@ -176,7 +176,7 @@ class ERM(Algorithm):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
 
-            if not self.no_cuda:
+            if self.cuda:
                 all_x = all_x.cuda()
                 all_y = all_y.cuda()
 
@@ -233,36 +233,37 @@ class ERM(Algorithm):
 
 class DANN(Algorithm):
     def __init__ (self, cfg, args):
-        self.no_cuda = args.no_cuda
-        self.lambd = cfg['algo']['lambda']
+        self.cuda = args.cuda
+        self.lambd = cfg['lambd']
+        self.d_steps_per_g_step = cfg['d_steps_per_g_step']
         self.featurizer = Featurizer(cfg)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
-            cfg['dataset']['num_classes'],
-            cfg["model"]["nonlinear_classifier"]
+            cfg['num_classes'],
+            cfg['nonlinear_classifier']
         )
 
         self.discriminator = nn.Sequential(
             GRL(),
             Classifier(
             self.featurizer.n_outputs,
-            cfg['dataset']['num_domains'],
-            cfg["algo"]["nonlinear_discriminator"]
+            cfg['num_train_domains'],
+            cfg['nonlinear_discriminator']
             )
         )
         self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())+list(self.discriminator.parameters())), 
-                                          lr=cfg['algo']['learning_rate'],
-                                          weight_decay=cfg['algo']['weight_decay'])
+                                          lr=cfg['learning_rate'],
+                                          weight_decay=cfg['weight_decay'])
         
-        if cfg['algo']['loss_type'] == 'CrossEntropy':
+        if cfg['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss() 
         else:
-            raise NotImplementedError(f"{cfg['algo']['loss_type']} is not implemented")
+            raise NotImplementedError(f"{cfg['loss_type']} is not implemented")
         
-        if cfg['algo']['loss_type_d'] == 'CrossEntropy':
+        if cfg['loss_type_d'] == 'CrossEntropy':
             self.loss_type_d = nn.CrossEntropyLoss() 
         else:
-            raise NotImplementedError(f"{cfg['algo']['loss_type_d']} is not implemented")
+            raise NotImplementedError(f"{cfg['loss_type_d']} is not implemented")
         
         self.loss_dict = {'train'   : {'loss': 0.0, 
                                        'loss_class': 0.0,
@@ -277,12 +278,12 @@ class DANN(Algorithm):
                                         }
                           }
 
-        if not self.no_cuda:
+        if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
             self.discriminator.cuda()
 
-    def train_step(self, train_loader, unlabeled=None):
+    def train_step(self, train_loader, epoch, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
         self.discriminator.train()
@@ -291,7 +292,7 @@ class DANN(Algorithm):
             all_x = minibatch.batch_feature
             all_y = minibatch.batch_label
             all_d = minibatch.batch_domain
-            if not self.no_cuda:
+            if self.cuda:
                 all_x = all_x.cuda()
                 all_y = all_y.cuda()
                 all_d = all_d.cuda()
@@ -303,7 +304,8 @@ class DANN(Algorithm):
 
             loss_class = self.loss_type(pred, all_y)
             loss_domain = self.loss_type_d(pred_d, all_d)
-            loss = loss_class + loss_domain * self.lambd
+            if epoch % self.d_steps_per_g_step == 0:
+                loss = loss_class + loss_domain * self.lambd
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -330,7 +332,7 @@ class DANN(Algorithm):
             all_y = minibatch.batch_label
             all_d = minibatch.batch_domain
 
-            if not self.no_cuda:
+            if self.cuda:
                 all_x = all_x.cuda()
                 all_y = all_y.cuda()
                 all_d = all_d.cuda()

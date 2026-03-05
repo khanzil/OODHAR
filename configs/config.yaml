@@ -1,44 +1,45 @@
 train_id: no2
-algorithm: ERM
 load_checkpoint: None
-dataset:
-  rootdir: ./dataset
-  dataset: Glasgow
-  feature_type: v_heatmap
-  domain: folder
-  num_classes: 6
-  num_domains: 5
-  val_fold: 6 February 2019 NG Homes Dataset
-  test_fold: 7 March 2019 West Cumbria Dataset
 
-algo:
-  learning_rate: 5e-6
-  weight_decay: 0.1
-  loss_type: CrossEntropy
-  # DANN  
-  lambda: 0.1
-  loss_type_d: CrossEntropy
-  nonlinear_discriminator: True
+# dataset
+rootdir: ./dataset
+dataset: Glasgow
+feature_type: v_heatmap
+domain: folder # key to extract domain from .h5 file
+num_classes: 6
+num_train_domains: 6
+num_domains: 7
+val_dom: None
+test_dom: 0
 
-model:
-  featurizer: MNIST_CNN
-  nonlinear_classifier: True
-  num_inputs: 1,200,251
-  # MLP
-  mlp_num_hidden: 32
-  mlp_dropout: 0.1
-  mlp_width: 64
-  mlp_depth: 5
+# train:
+batch_size: 32
+num_epochs: 2
+ckpt_freq: 1
+ckpt: None
 
-  # Resnet
-  resnet18: True
-  resnet_dropout: 0.1
-  freeze_bn: True
+algorithm: ERM
+learning_rate: 5e-6
+weight_decay: 0.1
+loss_type: CrossEntropy
+# DANN  
+lambd: 0.1
+loss_type_d: CrossEntropy
+nonlinear_discriminator: True
+d_steps_per_g_step: 1
 
-train:
-  batch_size: 32
-  num_epochs: 2
+# model
+featurizer: MNIST_CNN
+nonlinear_classifier: True
+num_inputs: 1,200,251
+# MLP
+mlp_num_hidden: 32
+mlp_dropout: 0.1
+mlp_width: 64
+mlp_depth: 5
+# Resnet
+resnet18: True
+resnet_dropout: 0.1
+freeze_bn: True
 
-test:
-  batch_size: 32
-  ckpt_dir: None
+

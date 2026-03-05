@@ -15,7 +15,7 @@ def init_train(cfg, args):
     '''
         create directories
     '''
-    results_dir = os.path.join('./results', cfg['dataset']['dataset'], cfg['train_id'])
+    results_dir = os.path.join('./results', cfg['dataset'], cfg['train_id'])
     if cfg['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
             raise ValueError(f'{results_dir} Already existed!')
@@ -36,13 +36,13 @@ def init_train(cfg, args):
     return algo, train_loader, val_loader, results_dir
 
 def init_test(cfg, args):
-    results_dir = os.path.join('./results', cfg['dataset']['dataset'], cfg['train_id'])
+    results_dir = os.path.join('./results', cfg['dataset'], cfg['train_id'])
     ckpts_dir = os.path.join(results_dir, 'ckpts')
     
-    if cfg['test']['ckpt_dir'] == 'None':
+    if cfg['ckpt'] == 'None':
         ckpt_file = os.listdir(ckpts_dir)[-1]
     else:
-        ckpt_file = cfg['test']['ckpt']
+        ckpt_file = cfg['ckpt']
 
     ckpt_path = os.path.join(ckpts_dir, ckpt_file)
     '''

@@ -6,6 +6,7 @@ import os
 
 def main():
     cfg, args = get_agrs_parser()
+
     if args.mode == 'train':
         algo, train_loader, val_loader, results_dir = init_train(cfg, args)
 
