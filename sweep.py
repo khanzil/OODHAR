@@ -32,9 +32,7 @@ if __name__ == '__main__':
             
             new_cfg = get_random_search_configs(cfg, train_id)
             cfg_yaml_list.append(f'./configs/sweep/config_{train_id}.yaml')
-            
-            print(type(new_cfg['featurizer']))
-            # create config_{i}.yaml for each cfg
+                        # create config_{i}.yaml for each cfg
             with open(cfg_yaml_list[-1], 'w') as f:
                 yaml.dump(new_cfg, f)
 
@@ -42,9 +40,9 @@ if __name__ == '__main__':
             
 
     # run subprocesses for each congis_{i}.yaml
-    # for seed, cfg_yaml in enumerate(cfg_yaml_list):
-    #     print(f'Starting {cfg_yaml}')
-    #     subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={seed}', shell=True)
+    for seed, cfg_yaml in enumerate(cfg_yaml_list):
+        print(f'Starting {cfg_yaml}')
+        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={seed}', shell=True)
 
 
 
