@@ -1,10 +1,12 @@
 import numpy as np
 import copy
 
-def get_random_search_configs(cfg, train_id):
+def get_random_search_configs(cfg, trial_seed, algo, featurizer):
     new_cfg = copy.deepcopy(cfg)
-    new_cfg['train_id'] = f'no {train_id}'
-
+    new_cfg['train_id'] = f'seed{trial_seed}_{algo}_{featurizer}'
+    new_cfg['algorithm'] = algo
+    new_cfg['featurizer'] = featurizer
+    
 
     # same for every configs
     new_cfg['learning_rate'] = 10**np.random.uniform(-5,-3)

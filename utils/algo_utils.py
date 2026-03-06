@@ -13,7 +13,7 @@ class Algorithm():
     def __init__(self):
         pass
 
-    def train_step(self, train_loader, unlabeled=None):
+    def train_step(self, train_loader, epoch, unlabeled=None):
         '''
             Perform 1 epoch update, return a dictionary of mean(loss)
         '''
@@ -32,7 +32,7 @@ class Algorithm():
             '''
                 Perform training
             '''
-            loss_list.append(self.train_step(train_loader))
+            loss_list.append(self.train_step(train_loader, epoch))
 
             '''
                 Calculate metrics on validation set and train.
@@ -123,7 +123,7 @@ class ERM(Algorithm):
             self.featurizer.cuda()
             self.classifier.cuda()
 
-    def train_step(self, train_loader, unlabeled=None):
+    def train_step(self, train_loader, epoch, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
         loader_len = 0.0
