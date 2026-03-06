@@ -14,23 +14,24 @@ test_dom: None
 
 # train:
 batch_size: 32
-num_epochs: 2
-ckpt_freq: 1
+num_epochs: 100
+ckpt_freq: 10
 ckpt: None
 
 algorithm: ERM
-learning_rate: 5e-6
+learning_rate: 5e-06
 weight_decay: 0.1
 loss_type: CrossEntropy
-# DANN  
-lambd: 0.1
+# DANN
+lambd: 0.2
 loss_type_d: CrossEntropy
 nonlinear_discriminator: True
+nonlinear_discriminator: true
 d_steps_per_g_step: 1
 
 # model
 featurizer: MNIST_CNN
-nonlinear_classifier: True
+nonlinear_classifier: true
 num_inputs: 1,200,251
 # MLP
 mlp_num_hidden: 32
@@ -38,8 +39,7 @@ mlp_dropout: 0.1
 mlp_width: 64
 mlp_depth: 5
 # Resnet
-resnet18: True
+resnet18: true
 resnet_dropout: 0.1
-freeze_bn: True
-
+freeze_bn: true
 
