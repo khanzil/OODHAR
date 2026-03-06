@@ -16,7 +16,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_test_doms', type=int, default=1, help='Number of test domains')
     args = parser.parse_args()
 
-    yaml = YAML(typ='safe')
+    yaml = YAML()
     yaml.indent(mapping = 2, sequence=2, offset = 2)
     yaml.default_flow_style = False
     with open(args.config_file, 'r') as f:
