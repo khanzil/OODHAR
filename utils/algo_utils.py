@@ -15,52 +15,56 @@ class Algorithm():
 
     def train_step(self, train_loader, unlabeled=None):
         '''
-            Perform 1 epoch update, add loss to self.loss_dict
+            Perform 1 epoch update, return a dictionary of mean(loss)
         '''
         raise NotImplementedError
 
-    def train(self, num_epochs, train_loader, ckpt_crit='acc', ckpt_start=0.85, results_dir=None, val_loader=None, cur_epoch=0):
+    def train(self, num_epochs, train_loader, val_loader, test_loader, ckpt_crit='acc', ckpt_freq=10, results_dir=None, cur_epoch=0):
         '''
             Trainer function that performs training over num_epochs epochs.
         '''
         loss_list = []
-        self.init_loss_dict(trainval='all')
         best_score = 0.0
 
         iterator = tqdm(range(cur_epoch, num_epochs), total=num_epochs-cur_epoch, unit='epoch', position=0, leave=True)
         for epoch in iterator:
-            self.init_loss_dict(trainval='all')
+
             '''
                 Perform training
             '''
-            self.train_step(train_loader)
+            loss_list.append(self.train_step(train_loader))
 
             '''
                 Calculate metrics on validation set and train.
             '''
-            self.validate_step(train_loader, trainval='train')
-            if val_loader is not None:
-                self.validate_step(val_loader, trainval='val')
+            _, train_acc = self.validate_step(train_loader)
+            _, val_acc = self.validate_step(val_loader)
+            _, test_acc = self.validate_step(test_loader)
 
-            loss_list.append({'loss_dict': self.loss_dict}) # add validation results to loss_list
-
+            loss_list[-1].update({'train_acc': train_acc,
+                                  'val_acc': val_acc,
+                                  'test_acc': test_acc,
+                                  'epoch': float(epoch)})
+            
+            
             '''
                 Print and save validation results after every epoch
             '''
-            tqdm.write(f'\nEpoch {epoch+1}/{num_epochs}: ')
-            for train_val in loss_list[-1]['loss_dict'].keys():
-                tqdm.write(f'{train_val}: ', end="")
-                for key in loss_list[-1]['loss_dict'][train_val].keys():
-                    tqdm.write(f"{key}: {loss_list[-1]['loss_dict'][train_val][key]:.5f},  ", end="")
-                tqdm.write("")
+            for key in loss_list[-1].keys():
+                tqdm.write(f"{key}\t".ljust(10), end = "")
+            tqdm.write("")
+
+            for key in loss_list[-1].keys():
+                tqdm.write(f"{loss_list[-1][key]:.10f}", end="")
+            tqdm.write("")
 
             '''
-                Save the last ckpt_num% checkpoints and the best val acc
+                Save the checkpoints
             '''
-            if epoch >= ckpt_start*num_epochs: # save last ckpt_num*100% check_points
+            if epoch % ckpt_freq == 0: 
                 self.save_ckpt(epoch, results_dir)
 
-            val_acc = loss_list[-1]['loss_dict']['val']['acc']
+
             if val_acc > best_score:
                 best_score = val_acc
                 self.save_ckpt(epoch, results_dir, is_best=True)
@@ -78,7 +82,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def validate_step(self, loader, trainval='train'):
+    def validate_step(self, loader):
         '''
             loader: dataloader for validation
             trainval: 'train' or 'val'
@@ -89,18 +93,6 @@ class Algorithm():
             In case validating on training set, train_loss will not be recalculated.
         '''
         raise NotImplementedError
-
-    def init_loss_dict(self, trainval='train'):
-        '''
-            Reset loss_dict, used before each epoch
-        '''
-        if trainval == 'train' or trainval == 'val':
-            for key in self.loss_dict[trainval]:
-                self.loss_dict[trainval][key] = 0.0
-        elif trainval == 'all':
-            for train_val in self.loss_dict.keys():
-                for key in self.loss_dict[train_val]:
-                    self.loss_dict[train_val][key] = 0.0
 
     def save_ckpt(self):
         raise NotImplementedError
@@ -127,17 +119,7 @@ class ERM(Algorithm):
             self.loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfg['loss_type']} is not implemented")
-
-        self.loss_dict = {'train' : {'loss_class': 0.0,
-                                     'acc' : 0.0,
-                                     'loader_len' : 0.0
-                                     },
-                          'val'   : {'loss_class' : 0.0,
-                                     'acc' : 0.0,
-                                     'loader_len' : 0.0
-                                     }
-                          }
-        
+       
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
@@ -145,6 +127,8 @@ class ERM(Algorithm):
     def train_step(self, train_loader, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
+        loader_len = 0.0
+        total_loss_class = 0.0
 
         for batch_idx, minibatch in enumerate(train_loader):
             all_x = minibatch.batch_feature
@@ -159,17 +143,22 @@ class ERM(Algorithm):
             loss_class.backward()
             self.optimizer.step()
 
-            self.loss_dict['train']['loss_class'] += loss_class.item()
-            self.loss_dict['train']['loader_len'] += all_x.shape[0]
+            total_loss_class += loss_class.item()
+            loader_len += all_x.shape[0]
 
-        self.loss_dict['train']['loss_class'] /= self.loss_dict['train']['loader_len']
+        total_loss_class /= loader_len
+
+        return {'loss_class' : total_loss_class}
 
     def predict(self, x):
         return self.network(x)
 
-    def validate_step(self, loader, trainval='train'):
+    def validate_step(self, loader):
         self.featurizer.eval()
         self.classifier.eval()
+        acc = 0.0
+        loader_len = 0.0
+
         pred_list = []
 
         for batch_idx, minibatch in enumerate(loader):
@@ -182,26 +171,17 @@ class ERM(Algorithm):
 
             with torch.no_grad():
                 pred = self.predict(all_x)
-                loss_class = self.loss_type(pred, all_y)
                 _, pred = pred.max(1) # same as np.argmax()
                 num_corrects = torch.eq(pred, all_y).sum()
                 pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-            if trainval == 'train':
-                self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
-            elif trainval == 'val':
-                self.loss_dict['val']['loss_class'] += loss_class.item()
-                self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
-                self.loss_dict['val']['loader_len'] += all_x.shape[0]
+                acc += num_corrects.cpu().numpy()      
+                loader_len += all_x.shape[0]
 
-        for keys in self.loss_dict[trainval]:
-            if keys != 'loader_len':
-                self.loss_dict[trainval][keys] /= self.loss_dict[trainval]['loader_len']
-        
         self.featurizer.train()
         self.classifier.train()
 
-        return pred_list
+        return pred_list, acc/loader_len
 
     def save_ckpt(self, epoch, results_dir, is_best=False):
         if is_best:
@@ -265,19 +245,6 @@ class DANN(Algorithm):
         else:
             raise NotImplementedError(f"{cfg['loss_type_d']} is not implemented")
         
-        self.loss_dict = {'train'   : {'loss': 0.0, 
-                                       'loss_class': 0.0,
-                                       'loss_domain': 0.0,
-                                       'acc' : 0.0,
-                                       'acc_d' : 0.0,
-                                       'loader_len' : 0.0
-                                       },
-                          'val'      : {'loss_class': 0.0,
-                                        'acc' : 0.0,
-                                        'loader_len': 0.0
-                                        }
-                          }
-
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
@@ -287,6 +254,11 @@ class DANN(Algorithm):
         self.featurizer.train()
         self.classifier.train()
         self.discriminator.train()
+
+        total_loss = 0.0
+        total_loss_class = 0.0
+        total_loss_domain = 0.0
+        loader_len = 0.0
         
         for batch_idx, minibatch in enumerate(train_loader):
             all_x = minibatch.batch_feature
@@ -311,21 +283,28 @@ class DANN(Algorithm):
             loss.backward()
             self.optimizer.step()
 
-            self.loss_dict['train']['loss'] += loss.item()
-            self.loss_dict['train']['loss_class'] += loss_class.item()
-            self.loss_dict['train']['loss_domain'] += loss_domain.item()
-            self.loss_dict['train']['loader_len'] += all_x.shape[0]
+            total_loss += loss.item()
+            total_loss_class += loss_class.item()
+            total_loss_domain += loss_domain.item()
+            loader_len += all_x.shape[0]
 
-        self.loss_dict['train']['loss'] /= self.loss_dict['train']['loader_len']
-        self.loss_dict['train']['loss_class'] /= self.loss_dict['train']['loader_len']
-        self.loss_dict['train']['loss_domain'] /= self.loss_dict['train']['loader_len']
+        total_loss /= loader_len
+        total_loss_class /= loader_len
+        total_loss_domain /= loader_len
+
+        return {'loss': total_loss, 
+                'loss_class': total_loss_class,
+                'loss_domain': total_loss_domain}
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
 
-    def validate_step(self, loader, trainval='train'):
+    def validate_step(self, loader):
         self.featurizer.eval()
         self.classifier.eval()
+        pred_list = []
+        acc = 0.0
+        loader_len = 0.0
 
         for batch_idx, minibatch in enumerate(loader):
             all_x = minibatch.batch_feature
@@ -340,29 +319,17 @@ class DANN(Algorithm):
             with torch.no_grad():
                 all_z = self.featurizer(all_x)
                 pred = self.classifier(all_z)
-                loss_class = self.loss_type(pred, all_y)
                 _, pred = pred.max(1) # same as np.argmax()
                 num_corrects = torch.eq(pred, all_y).sum()
+                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                if trainval == 'train':
-                    pred_d = self.discriminator(all_z)
-                    _, pred_d = pred_d.max(1) # same as np.argmax()
-                    num_corrects_d = torch.eq(pred_d, all_d).sum()
-
-            if trainval == 'train':
-                self.loss_dict['train']['acc'] += num_corrects.cpu().numpy()
-                self.loss_dict['train']['acc_d'] += num_corrects_d.cpu().numpy()                
-            elif trainval == 'val':
-                self.loss_dict['val']['loss_class'] += loss_class.item()
-                self.loss_dict['val']['acc'] += num_corrects.cpu().numpy()
-                self.loss_dict['val']['loader_len'] += all_x.shape[0]
-
-        for keys in self.loss_dict[trainval]:
-            if keys != 'loader_len':
-                self.loss_dict[trainval][keys] /= self.loss_dict[trainval]['loader_len']    
+            acc += num_corrects.cpu().numpy()
+            loader_len += all_x.shape[0]
 
         self.featurizer.train()
         self.classifier.train()
+
+        return pred_list, acc/loader_len
 
     def save_ckpt(self, epoch, results_dir, is_best=False):
         if is_best:

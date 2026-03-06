@@ -26,14 +26,14 @@ def init_train(cfg, args):
     '''
         get dataloader
     '''
-    train_loader, val_loader = get_dataloader(cfg, args, 'trainval')
+    loaders = get_dataloader(cfg, args, 'trainval')
     '''
         get algorithm
     '''
     algo = get_algo(cfg, args)
 
 
-    return algo, train_loader, val_loader, results_dir
+    return algo, loaders, results_dir
 
 def init_test(cfg, args):
     results_dir = os.path.join('./results', cfg['dataset'], cfg['train_id'])

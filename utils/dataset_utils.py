@@ -4,25 +4,25 @@ import h5py
 import os
 
 class Glasgow(Dataset):
-    def __init__(self, folds, cfg):
+    def __init__(self, fold, cfg):
         super().__init__()
         dataset_dir = os.path.join(cfg['rootdir'], cfg['dataset'])
-        self.folds = folds
+        self.fold = fold
         self.all_x = []
         self.all_y = []
         self.all_d = []
 
-        for fold in self.folds:
-            for file in os.listdir(os.path.join(dataset_dir,fold)):
-                feature_h5_dir = os.path.join(dataset_dir, fold, file)
-                with h5py.File(feature_h5_dir, 'r') as hf:
-                    feature = hf[cfg['feature_type']][()] # this has size (samples, range, time) or (samples, range, vel)
-                    y = hf['label'][()]
-                    d = hf[cfg['domain']][()]
 
-                self.all_x.append(torch.abs(torch.from_numpy(feature)))
-                self.all_y.append(torch.tensor(y)-1)
-                self.all_d.append(torch.tensor(d))
+        for file in os.listdir(os.path.join(dataset_dir,fold)):
+            feature_h5_dir = os.path.join(dataset_dir, fold, file)
+            with h5py.File(feature_h5_dir, 'r') as hf:
+                feature = hf[cfg['feature_type']][()] # this has size (samples, range, time) or (samples, range, vel)
+                y = hf['label'][()]
+                d = hf[cfg['domain']][()]
+
+            self.all_x.append(torch.abs(torch.from_numpy(feature)))
+            self.all_y.append(torch.tensor(y)-1)
+            self.all_d.append(torch.tensor(d))
 
         self.all_x = torch.stack(self.all_x).float()
         if len(self.all_x.shape) == 3:

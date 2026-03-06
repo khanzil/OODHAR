@@ -1,4 +1,4 @@
-train_id: no2
+train_id: no1
 load_checkpoint: None
 
 # dataset
@@ -10,7 +10,7 @@ num_classes: 6
 num_train_domains: 6
 num_domains: 7
 val_dom: None
-test_dom: 0
+test_dom: None
 
 # train:
 batch_size: 32
