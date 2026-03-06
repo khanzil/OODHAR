@@ -1,9 +1,8 @@
 import numpy as np
 import copy
 
-def get_random_search_configs(cfg, test_dom, train_id):
+def get_random_search_configs(cfg, train_id):
     new_cfg = copy.deepcopy(cfg)
-    new_cfg['test_dom'] = test_dom
     new_cfg['train_id'] = f'no {train_id}'
 
 
