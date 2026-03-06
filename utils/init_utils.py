@@ -66,15 +66,10 @@ def get_dataloader(cfg, args, trainval_test):
             
             loaders.append((train_loaders, val_loaders, test_loaders))
     else:
-        raise NotImplementedError('Only support all enrivonment be as test for now')
+        raise NotImplementedError('Only support sweep through all test domain combination for now')
     
     return loaders
-    
-    
-    
-    
-    
-    
+       
     
     # val_doms = [fold.strip() for fold in cfg['val_dom'].split(',')] # name of val_dom
     # test_doms = [fold.strip() for fold in cfg['test_dom'].split(',')] # name of test_dom

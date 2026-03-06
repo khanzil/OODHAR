@@ -50,11 +50,11 @@ class Algorithm():
                 Print and save validation results after every epoch
             '''
             for key in loss_list[-1].keys():
-                tqdm.write(f"{key}\t".ljust(10), end = "")
+                tqdm.write(f"{key}\t".ljust(15), end = "")
             tqdm.write("")
 
             for key in loss_list[-1].keys():
-                tqdm.write(f"{loss_list[-1][key]:.10f}", end="")
+                tqdm.write(f"{loss_list[-1][key]:.15f}", end="")
             tqdm.write("")
 
             '''
