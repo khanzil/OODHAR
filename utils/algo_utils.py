@@ -277,6 +277,8 @@ class DANN(Algorithm):
             loss_domain = self.loss_type_d(pred_d, all_d)
             if epoch % self.d_steps_per_g_step == 0:
                 loss = loss_class + loss_domain * self.lambd
+            else:
+                loss = loss_class
 
             self.optimizer.zero_grad()
             loss.backward()
