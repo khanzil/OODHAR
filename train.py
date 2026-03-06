@@ -28,9 +28,6 @@ def main():
                                 test_loader=test_loader,
                                 results_dir=dom_results_dir,
                                 ckpt_freq=cfg['ckpt_freq'])
-        
-            raise ValueError('End!')
-
 
 if __name__ == '__main__':
     main()

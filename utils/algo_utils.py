@@ -46,7 +46,6 @@ class Algorithm():
                                   'test_acc': test_acc,
                                   'epoch': float(epoch)})
             
-            
             '''
                 Print and save validation results after every epoch
             '''
