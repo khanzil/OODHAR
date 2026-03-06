@@ -35,6 +35,9 @@ def init_train(cfg, args):
 
     return algo, loaders, results_dir
 
+def init_algo(cfg, args):
+    return get_algo(cfg, args)
+
 def init_test(cfg, args):
     results_dir = os.path.join('./results', cfg['dataset'], cfg['train_id'])
     ckpts_dir = os.path.join(results_dir, 'ckpts')

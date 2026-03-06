@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from utils.cmd_parser import get_agrs_parser
-from initialize import init_train, init_test
+from initialize import init_train, init_test, init_algo
 import json
 import os
 
@@ -16,6 +16,7 @@ def main():
             cur_epoch = algo.load_ckpt(cfg['load_checkpoint'])
         
         for i_loader, (train_loader, val_loader, test_loader) in enumerate(loaders):
+            algo = init_algo(cfg, args)
             num_epochs = cfg['num_epochs']
             dom_results_dir = os.path.join(results_dir, f'test_dom_{i_loader}')
             if not os.path.isdir(dom_results_dir):
