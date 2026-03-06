@@ -25,7 +25,6 @@ loss_type: CrossEntropy
 # DANN
 lambd: 0.2
 loss_type_d: CrossEntropy
-nonlinear_discriminator: True
 nonlinear_discriminator: true
 d_steps_per_g_step: 1
 
