@@ -31,7 +31,7 @@ if __name__ == '__main__':
     for trial_seed in range(args.n_trials):
         # only support single test domain for now
         for search in range(args.n_searchs):
-            new_cfg = get_random_search_configs(cfg, trial_seed, args.algo, args.featurizer)
+            new_cfg = get_random_search_configs(cfg, trial_seed, search, args.algo, args.featurizer)
             cfg_yaml_list.append(f'./configs/sweep/config_{train_id}.yaml')
             # create config_{i}.yaml for each cfg
             with open(cfg_yaml_list[-1], 'w') as f:
