@@ -44,7 +44,7 @@ class Algorithm():
             loss_list[-1].update({'train_acc': train_acc,
                                   'val_acc': val_acc,
                                   'test_acc': test_acc,
-                                  'epoch': float(epoch)})
+                                  'epoch': float(epoch+1)})
             
             '''
                 Print and save validation results after every epoch
@@ -60,7 +60,7 @@ class Algorithm():
             '''
                 Save the checkpoints
             '''
-            if epoch % ckpt_freq == 0: 
+            if (epoch+1) % ckpt_freq == 0: 
                 self.save_ckpt(epoch, results_dir)
 
 

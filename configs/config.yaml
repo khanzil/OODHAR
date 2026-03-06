@@ -15,7 +15,7 @@ test_dom: None
 # train:
 batch_size: 32
 num_epochs: 100
-ckpt_freq: 10
+ckpt_freq: 20
 ckpt: None
 
 algorithm: ERM

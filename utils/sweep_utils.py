@@ -1,9 +1,9 @@
 import numpy as np
 import copy
 
-def get_random_search_configs(cfg, trial_seed, search, algo, featurizer):
+def get_random_search_configs(cfg, seed, search, algo, featurizer):
     new_cfg = copy.deepcopy(cfg)
-    new_cfg['train_id'] = f'seed{trial_seed}_search{search}_{algo}_{featurizer}'
+    new_cfg['train_id'] = f'seed{seed}_search{search}_{algo}_{featurizer}'
     new_cfg['algorithm'] = algo
     new_cfg['featurizer'] = featurizer
     
