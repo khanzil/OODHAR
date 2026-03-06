@@ -226,7 +226,7 @@ class DANN(Algorithm):
             GRL(),
             Classifier(
             self.featurizer.n_outputs,
-            cfg['num_train_domains'],
+            cfg['num_domains'],
             cfg['nonlinear_discriminator']
             )
         )
