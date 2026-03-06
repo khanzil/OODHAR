@@ -32,7 +32,7 @@ if __name__ == '__main__':
         # only support single test domain for now
         for search in range(args.n_searchs):
             new_cfg = get_random_search_configs(cfg, seed, search, args.algo, args.featurizer)
-            cfg_yaml_list.append(f'./configs/sweep/config_{new_cfg['train_id']}.yaml')
+            cfg_yaml_list.append(f"./configs/sweep/config_{new_cfg['train_id']}.yaml")
             # create config_{i}.yaml for each cfg
             with open(cfg_yaml_list[-1], 'w') as f:
                 yaml.dump(new_cfg, f)
