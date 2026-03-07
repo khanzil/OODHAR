@@ -64,9 +64,9 @@ class Algorithm():
                 self.save_ckpt(epoch, results_dir)
 
 
-            if val_acc > best_score:
-                best_score = val_acc
-                self.save_ckpt(epoch, results_dir, is_best=True)
+            # if val_acc > best_score:
+            #     best_score = val_acc
+            #     self.save_ckpt(epoch, results_dir, is_best=True)
                 
         output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
         for dic in loss_list:
@@ -335,6 +335,7 @@ class DANN(Algorithm):
     def save_ckpt(self, epoch, results_dir, is_best=False):
         if is_best:
             checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+            os.remove(checkpoint_path)
         else:
             checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
 
