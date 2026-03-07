@@ -15,10 +15,10 @@ test_dom: None
 # train:
 batch_size: 32
 num_epochs: 100
-ckpt_freq: 20
+ckpt_freq: 100
 ckpt: None
 
-algorithm: ERM
+algorithm: DANN
 learning_rate: 5e-06
 weight_decay: 0.1
 loss_type: CrossEntropy
@@ -29,7 +29,7 @@ nonlinear_discriminator: true
 d_steps_per_g_step: 1
 
 # model
-featurizer: MNIST_CNN
+featurizer: ResNet
 nonlinear_classifier: true
 num_inputs: 1,200,251
 # MLP
