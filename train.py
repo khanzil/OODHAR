@@ -16,6 +16,7 @@ def main():
             cur_step = algo.load_ckpt(cfgs['load_checkpoint'])
         
         for i_loader, (train_loader, in_val_loader, out_val_loader, test_loader) in enumerate(loaders):
+            print(f"Test dom no {i_loader}")
             algo = init_algo(cfgs, args)
             num_steps = cfgs['num_steps']
             dom_results_dir = os.path.join(results_dir, f'test_dom_{i_loader}')

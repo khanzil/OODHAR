@@ -25,7 +25,8 @@ class Algorithm():
         '''
         loss_list = []
 
-        iterator = tqdm(range(cur_step, num_steps), total=num_steps-cur_step, unit='step', position=0, leave=True)
+        total_step = num_steps-cur_step
+        iterator = tqdm(range(cur_step, num_steps), total=total_step, unit='step', position=0, leave=True)
         for step in iterator:
             minibatchess = next(train_loader)
 
@@ -37,7 +38,7 @@ class Algorithm():
             '''
                 Calculate metrics on validation set and train.
             '''
-            if (step+1) % val_freq == 0:
+            if step % val_freq == 0 or step==total_step-1:
                 _, train_acc = self.validate_step(in_val_loader)
                 _, val_acc = self.validate_step(out_val_loader)
                 _, test_acc = self.validate_step(test_loader)
@@ -45,7 +46,7 @@ class Algorithm():
                 loss_list[-1].update({'train_acc': train_acc,
                                     'val_acc': val_acc,
                                     'test_acc': test_acc,
-                                    'step': float(step+1)})
+                                    'step': float(step)})
                 
                 '''
                     Print and save validation results at every val step
@@ -62,7 +63,7 @@ class Algorithm():
             '''
                 Save the checkpoints
             '''
-            if (step+1) % ckpt_freq == 0: 
+            if step % ckpt_freq == 0 or step==total_step-1: 
                 self.save_ckpt(step, results_dir)
             
         output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
