@@ -42,11 +42,13 @@ class Algorithm():
                 _, train_acc = self.validate_step(in_val_loader)
                 _, val_acc = self.validate_step(out_val_loader)
                 _, test_acc = self.validate_step(test_loader)
-
+                mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
+                
                 loss_list[-1].update({'train_acc': train_acc,
                                     'val_acc': val_acc,
                                     'test_acc': test_acc,
-                                    'step': float(step)})
+                                    'step': float(step)},
+                                    'mem_gb': mem_gb)
                 
                 '''
                     Print and save validation results at every val step
