@@ -47,8 +47,8 @@ class Algorithm():
                 loss_list[-1].update({'train_acc': train_acc,
                                     'val_acc': val_acc,
                                     'test_acc': test_acc,
-                                    'step': float(step)},
-                                    'mem_gb': mem_gb)
+                                    'step': float(step),
+                                    'mem_gb': mem_gb})
                 
                 '''
                     Print and save validation results at every val step
