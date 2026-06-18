@@ -21,7 +21,8 @@ def init_train(cfgs, args):
     results_dir = os.path.join('./results', cfgs['dataset'], cfgs['train_id'])
     if cfgs['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
-            print(f"{results_dir} Already existed!")
+            raise ValueError(f"{results_dir} Already existed!")
+
 
         os.makedirs(os.path.join(results_dir, 'ckpts'))
         

@@ -29,6 +29,7 @@ def main():
                                 out_val_loader=out_val_loader, 
                                 test_loader=test_loader,
                                 results_dir=dom_results_dir,
+                                val_freq=cfgs['val_freq'],
                                 ckpt_freq=cfgs['ckpt_freq'])
 
 if __name__ == '__main__':
