@@ -1,4 +1,4 @@
-train_id: no1
+train_id: no_test
 load_checkpoint: None
 
 # dataset
@@ -11,11 +11,13 @@ num_train_domains: 6
 num_domains: 7
 val_dom: None
 test_dom: None
+train_split: 0.85
 
 # train:
 batch_size: 32
-num_epochs: 100
-ckpt_freq: 100
+num_steps: 800
+val_freq: 20
+ckpt_freq: 800
 ckpt: None
 
 algorithm: DANN
@@ -23,10 +25,13 @@ learning_rate: 5e-06
 weight_decay: 0.1
 loss_type: CrossEntropy
 # DANN
-lambd: 0.2
-loss_type_d: CrossEntropy
-nonlinear_discriminator: true
-d_steps_per_g_step: 1
+DANN:
+  lambd: 0.2
+  loss_type_d: CrossEntropy
+  nonlinear_discriminator: true
+  d_steps_per_g_step: 1
+# IRM
+
 
 # model
 featurizer: ResNet

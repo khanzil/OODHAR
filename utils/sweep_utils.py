@@ -1,35 +1,35 @@
 import numpy as np
 import copy
 
-def get_random_search_configs(cfg, seed, search, algo, featurizer):
-    new_cfg = copy.deepcopy(cfg)
-    new_cfg['train_id'] = f'seed{seed}_search{search}_{algo}_{featurizer}'
-    new_cfg['algorithm'] = algo
-    new_cfg['featurizer'] = featurizer
+def get_random_search_configs(cfgs, seed, search, algo, featurizer):
+    new_cfgs = copy.deepcopy(cfgs)
+    new_cfgs['train_id'] = f'seed{seed}_search{search}_{algo}_{featurizer}'
+    new_cfgs['algorithm'] = algo
+    new_cfgs['featurizer'] = featurizer
     
 
     # same for every configs
-    new_cfg['learning_rate'] = 10**np.random.uniform(-5,-3)
-    new_cfg['weight_decay'] = 10**np.random.uniform(-5,-3)
-    new_cfg['batch_size'] = 2**np.random.randint(3,5)
+    new_cfgs['learning_rate'] = 10**np.random.uniform(-5,-3)
+    new_cfgs['weight_decay'] = 10**np.random.uniform(-5,-3)
+    new_cfgs['batch_size'] = 2**np.random.randint(3,5)
 
 
-    # featurizer-based cfg
-    if new_cfg['featurizer'] == 'MLP':
-        new_cfg['mlp_num_hidden'] = 2**np.random.randint(5,8)
-        new_cfg['mlp_dropout'] = float(np.random.choice([0.0, 0.1, 0.5]))
-        new_cfg['mlp_width'] = 2**np.random.randint(6,10)
-        new_cfg['mlp_depth'] = np.random.randint(3,5)
+    # featurizer-based cfgs
+    if new_cfgs['featurizer'] == 'MLP':
+        new_cfgs['mlp_num_hidden'] = 2**np.random.randint(5,8)
+        new_cfgs['mlp_dropout'] = float(np.random.choice([0.0, 0.1, 0.5]))
+        new_cfgs['mlp_width'] = 2**np.random.randint(6,10)
+        new_cfgs['mlp_depth'] = np.random.randint(3,5)
     
-    elif new_cfg['featurizer'] == 'ResNet':
-        new_cfg['resnet_dropout'] = float(np.random.choice([0.0, 0.1, 0.5]))
+    elif new_cfgs['featurizer'] == 'ResNet':
+        new_cfgs['resnet_dropout'] = float(np.random.choice([0.0, 0.1, 0.5]))
 
-    # algo-based cfg
-    if new_cfg['algorithm'] == 'DANN':
-        new_cfg['lambd'] = 10**np.random.uniform(-3, -1)
-        new_cfg['d_steps_per_g_step'] = int(2**np.random.uniform(2, 4))
+    # algo-based cfgs
+    if new_cfgs['algorithm'] == 'DANN':
+        new_cfgs['lambd'] = 10**np.random.uniform(-3, -1)
+        new_cfgs['d_steps_per_g_step'] = int(2**np.random.uniform(2, 4))
 
-    return new_cfg
+    return new_cfgs
 
 
 

@@ -2,7 +2,7 @@ import os
 import numpy as np
 from torch.utils.data import DataLoader, Subset, ConcatDataset
 from utils.algo_utils import ERM, DANN
-from utils.dataset_utils import Glasgow, GlasgowCollate
+from utils.dataset_utils import *
 
 algos_dict = {
     'ERM'   : ERM,
@@ -13,130 +13,117 @@ datasets_dict = {
     'Glasgow'   : Glasgow
 }
 
-collate_fns_dict = {
-    'Glasgow'   : GlasgowCollate
-}
 
-def get_algo(cfg, args):
-    return algos_dict[cfg['algorithm']](cfg, args)
 
-def get_dataloader(cfg, args, trainval_test):
-    dataset_dir = os.path.join(cfg['rootdir'], cfg['dataset']) # directory contains all data folders
+def get_algo(cfgs, args):
+    return algos_dict[cfgs['algorithm']](cfgs, args)
+
+def get_dataloader(cfgs, args):
+    dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset']) # directory contains all data folders
     dom_list = [fold for fold in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,fold))]
     loaders = []
-   
-    if cfg['test_dom'] == 'None':
+    dataset_num_workers = -1
+
+    if cfgs['test_dom'] == 'None':
         # This code is using train-valication domain split and sweep through all test domain combination
         for i_test_dom, test_dom in enumerate(dom_list):
-            train_dataset = []
-            val_dataset = []
+            train_datasets = []
+            val_datasets = []
+            test_datasets = []
 
             for fold in dom_list:
-                dataset = datasets_dict[cfg['dataset']](fold, cfg)
-                if fold == test_dom:
-                    test_loaders = DataLoader(dataset=dataset,
-                                     batch_size=cfg['batch_size'],
-                                     shuffle=False,
-                                     collate_fn=collate_fns_dict[cfg['dataset']],
-                                     num_workers=args.num_workers
-                                     )
+                dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
+                if dataset_num_workers == -1:
+                    dataset_num_workers = dataset.num_workers
+                if fold[0] in test_dom:
+                    test_datasets.append(dataset)
 
                 else:
                     idx = np.arange(len(dataset))
                     np.random.shuffle(idx)
-                    train_dataset.append(Subset(dataset, idx[:int(0.8*len(dataset))+1]))
-                    val_dataset.append(Subset(dataset, idx[int(0.8*len(dataset))+1:]))
-            
-            train_dataset = ConcatDataset(train_dataset)
-            val_dataset = ConcatDataset(val_dataset)
+                    train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))+1])
+                    val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset))+1:])
 
-            train_loaders = DataLoader(dataset=train_dataset,
-                                        batch_size=cfg['batch_size'],
-                                        shuffle=True,
-                                        collate_fn=collate_fns_dict[cfg['dataset']],
-                                        num_workers=args.num_workers
-                                        )
-            
-            val_loaders = DataLoader(dataset=val_dataset,
-                                    batch_size=cfg['batch_size'],
-                                    shuffle=False,
-                                    collate_fn=collate_fns_dict[cfg['dataset']],
-                                    num_workers=args.num_workers
-                                    )
-            
-            loaders.append((train_loaders, val_loaders, test_loaders))
+                    train_weights = make_weights_for_balanced_classes(train_dataset)
+
+                    train_datasets.append((train_dataset, train_weights))
+                    val_datasets.append(val_dataset)
+
+            total_batch_size = len(train_datasets)*cfgs['batch_size']
+
+            train_loaders = [InfiniteDataLoader(dataset=dataset,
+                                                weights=weights,
+                                                batch_size=cfgs['batch_size'],
+                                                num_workers=dataset_num_workers)
+                            for dataset, weights in train_datasets]
+            train_loaders = zip(*train_loaders)
+
+
+            in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                        batch_size=total_batch_size,
+                                        num_workers=args.num_workers)
+            out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
+                                    batch_size=total_batch_size,
+                                    num_workers=args.num_workers)
+            test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
+                                    batch_size=total_batch_size,
+                                    num_workers=args.num_workers,
+                                    shuffle=False)
+
+            loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
+
+
+
+    # elif cfgs['test_dom'] == cfgs['val_dom']:
+        # test-domain validation set (oracle)
+
     else:
-        raise NotImplementedError('Only support sweep through all test domain combination for now')
-    
+        # Single test_dom case
+        train_datasets = []
+        val_datasets = []
+        test_datasets = []
+
+        for fold in dom_list:
+            dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
+            if fold[0] in cfgs['test_dom']:
+                test_datasets.append(dataset)
+
+            else:
+                idx = np.arange(len(dataset))
+                np.random.shuffle(idx)
+                train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))])
+                val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset)):])
+
+                train_weights = make_weights_for_balanced_classes(train_dataset)
+
+                train_datasets.append((train_dataset, train_weights))
+                val_datasets.append(val_dataset)
+
+        total_batch_size = len(train_datasets)*cfgs['batch_size']
+
+        train_loaders = [InfiniteDataLoader(dataset=dataset,
+                                            weights=weights,
+                                            batch_size=cfgs['batch_size'],
+                                            num_workers=int(args.num_workers/len(train_dataset)))
+                        for dataset, weights in train_datasets]
+        train_loaders = zip(*train_loaders)
+
+        in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                    batch_size=total_batch_size,
+                                    num_workers=args.num_workers)
+        out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
+                                 batch_size=total_batch_size,
+                                 num_workers=args.num_workers)
+
+        test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
+                                  batch_size=total_batch_size,
+                                  num_workers=args.num_workers,
+                                  shuffle=False)
+
+        loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
+
     return loaders
        
-    
-    # val_doms = [fold.strip() for fold in cfg['val_dom'].split(',')] # name of val_dom
-    # test_doms = [fold.strip() for fold in cfg['test_dom'].split(',')] # name of test_dom
-    
-    # train_folds = [fold for fold in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,fold)) and fold not in val_doms and fold not in test_doms]
-
-    # if trainval_test == 'trainval':
-    #     if cfg['val_dom'] == 'None': # split the train data if there's no val_dom, the ratio is 8 - 2
-    #         dataset = datasets_dict[cfg['dataset']](train_folds, cfg)
-    #         idx = np.arange(len(dataset))
-    #         np.random.shuffle(idx)
-            
-    #         train_dataset = Subset(dataset, idx[:int(0.8*len(dataset))+1])
-    #         val_dataset = Subset(dataset, idx[int(0.8*len(dataset))+1:])
-
-    #         train_loaders = DataLoader(dataset=train_dataset,
-    #                                       batch_size=cfg['batch_size'],
-    #                                       shuffle=True,
-    #                                       collate_fn=collate_fns_dict[cfg['dataset']],
-    #                                       num_workers=args.num_workers
-    #                                       )
-    #         val_loaders = DataLoader(dataset=val_dataset,
-    #                                     batch_size=cfg['batch_size'],
-    #                                     shuffle=False,
-    #                                     collate_fn=collate_fns_dict[cfg['dataset']],
-    #                                     num_workers=args.num_workers
-    #                                     )
-        
-    #     else: 
-    #         for fold in val_doms:
-    #             if fold not in os.listdir(dataset_dir):
-    #                 raise ValueError(f'Val folders {val_doms} not existed in {dataset_dir}')
-            
-    #         train_dataset = datasets_dict[cfg['dataset']](train_folds, cfg)
-    #         train_loaders = DataLoader(dataset=train_dataset,
-    #                                       batch_size=cfg['batch_size'],
-    #                                       shuffle=True,
-    #                                       collate_fn=collate_fns_dict[cfg['dataset']],
-    #                                       num_workers=args.num_workers
-    #                                       )     
-    #         val_dataset = datasets_dict[cfg['dataset']](val_doms, cfg)
-    #         val_loaders = DataLoader(dataset=val_dataset, 
-    #                                     batch_size=cfg['batch_size'],
-    #                                     shuffle=False,
-    #                                     collate_fn=collate_fns_dict[cfg['dataset']],
-    #                                     num_workers=args.num_workers
-    #                                     )
-
-    #     return train_loaders, val_loaders
-
-    # elif trainval_test == 'test':
-    #     for fold in test_doms:
-    #         if fold not in os.listdir(dataset_dir):
-    #             raise ValueError(f'Test folder {fold} not existed')
-            
-    #     test_dataset = datasets_dict[cfg['dataset']](test_doms, cfg)
-    #     test_loaders = DataLoader(dataset=test_dataset,
-    #                                  batch_size=cfg['batch_size'],
-    #                                  shuffle=False,
-    #                                  collate_fn=collate_fns_dict[cfg['dataset']],
-    #                                  num_workers=args.num_workers
-    #                                  )
-
-    #     return test_loaders
-    
-
-
 
 
 

@@ -29,7 +29,7 @@ if __name__ == '__main__':
     train_id = 0
     
     for seed in range(args.n_trials):
-        # only support single test domain for now
+        # only support single test domain for now, this seed controls RNG for dataset divison
         for search in range(args.n_searchs):
             new_cfg = get_random_search_configs(cfg, seed, search, args.algo, args.featurizer)
             cfg_yaml_list.append(f"./configs/sweep/config_{new_cfg['train_id']}.yaml")

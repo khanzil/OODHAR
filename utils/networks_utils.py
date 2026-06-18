@@ -7,16 +7,16 @@ from torch.autograd import Function
 
 class MLP(nn.Module):
     """Just  an MLP"""
-    def __init__(self, n_inputs, cfg):
+    def __init__(self, n_inputs, cfgs):
         super(MLP, self).__init__()
         self.flat = nn.Flatten()
-        self.input = nn.Linear(n_inputs, cfg['mlp_width'])
-        self.dropout = nn.Dropout(cfg['mlp_dropout'])
+        self.input = nn.Linear(n_inputs, cfgs['mlp_width'])
+        self.dropout = nn.Dropout(cfgs['mlp_dropout'])
         self.hiddens = nn.ModuleList([
-            nn.Linear(cfg['mlp_width'], cfg['mlp_width'])
-            for _ in range(cfg['mlp_depth']-2)])
-        self.output = nn.Linear(cfg['mlp_width'], cfg['mlp_num_hidden'])
-        self.n_outputs = cfg['mlp_num_hidden']
+            nn.Linear(cfgs['mlp_width'], cfgs['mlp_width'])
+            for _ in range(cfgs['mlp_depth']-2)])
+        self.output = nn.Linear(cfgs['mlp_width'], cfgs['mlp_num_hidden'])
+        self.n_outputs = cfgs['mlp_num_hidden']
         self.activation = nn.Identity() # for URM; does not affect other algorithms
 
     def forward(self, x):
@@ -34,9 +34,9 @@ class MLP(nn.Module):
 
 class ResNet(nn.Module):
     """ResNet with the softmax chopped off and the batchnorm frozen"""
-    def __init__(self, input_shape, cfg):
+    def __init__(self, input_shape, cfgs):
         super(ResNet, self).__init__()
-        if cfg['resnet18']:
+        if cfgs['resnet18']:
             self.network = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
             self.n_outputs = 512
         else:
@@ -59,10 +59,10 @@ class ResNet(nn.Module):
         del self.network.fc
         self.network.fc = nn.Identity()
 
-        if cfg['freeze_bn']:
+        if cfgs['freeze_bn']:
             self.freeze_bn()
-        self.cfg = cfg
-        self.dropout = nn.Dropout(cfg['resnet_dropout'])
+        self.cfgs = cfgs
+        self.dropout = nn.Dropout(cfgs['resnet_dropout'])
         self.activation = nn.Identity() # for URM; does not affect other algorithms
         # torchvision Resnet already have a flatten layer 
 
@@ -75,7 +75,7 @@ class ResNet(nn.Module):
         Override the default train() to freeze the BN parameters
         """
         super().train(mode)
-        if self.cfg["freeze_bn"]:
+        if self.cfgs["freeze_bn"]:
             self.freeze_bn()
 
     def freeze_bn(self):
@@ -149,20 +149,20 @@ featurizer_dict = {
 }
 
 # This include the backbone networks
-def Featurizer(cfg):
+def Featurizer(cfgs):
     """
         Select feature extractor    
     """
 
-    input_shape = [int(item.strip()) for item in cfg['num_inputs'].split(',')]
+    input_shape = [int(item.strip()) for item in cfgs['num_inputs'].split(',')]
     
-    match cfg["featurizer"]:
+    match cfgs["featurizer"]:
         case "MLP":
-            return MLP(torch.sum(torch.ones(input_shape)).int(), cfg)
+            return MLP(torch.sum(torch.ones(input_shape)).int(), cfgs)
         case "MNIST_CNN":
             return MNIST_CNN(input_shape)
         case "ResNet":
-            return ResNet(input_shape, cfg)
+            return ResNet(input_shape, cfgs)
         case _:
             raise NotImplementedError
 

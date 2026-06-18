@@ -1,34 +1,35 @@
 from tqdm import tqdm
 from utils.cmd_parser import get_agrs_parser
-from initialize import init_train, init_test, init_algo
+from initialize import init_train, init_algo
 import json
 import os
 
 def main():
-    cfg, args = get_agrs_parser()
+    cfgs, args = get_agrs_parser()
 
     if args.mode == 'train':
-        algo, loaders, results_dir = init_train(cfg, args)
+        algo, loaders, results_dir = init_train(cfgs, args)
 
-        if cfg['load_checkpoint'] == 'None':
-            cur_epoch = 0
+        if cfgs['load_checkpoint'] == 'None':
+            cur_step = 0
         else:
-            cur_epoch = algo.load_ckpt(cfg['load_checkpoint'])
+            cur_step = algo.load_ckpt(cfgs['load_checkpoint'])
         
-        for i_loader, (train_loader, val_loader, test_loader) in enumerate(loaders):
-            algo = init_algo(cfg, args)
-            num_epochs = cfg['num_epochs']
+        for i_loader, (train_loader, in_val_loader, out_val_loader, test_loader) in enumerate(loaders):
+            algo = init_algo(cfgs, args)
+            num_steps = cfgs['num_steps']
             dom_results_dir = os.path.join(results_dir, f'test_dom_{i_loader}')
             if not os.path.isdir(dom_results_dir):
                 os.makedirs(os.path.join(dom_results_dir,'ckpts'), exist_ok=True)
 
-            loss_list = algo.train(cur_epoch=cur_epoch, 
-                                num_epochs=num_epochs, 
+            loss_list = algo.train(cur_step=cur_step, 
+                                num_steps=num_steps, 
                                 train_loader=train_loader, 
-                                val_loader=val_loader, 
+                                in_val_loader=in_val_loader, 
+                                out_val_loader=out_val_loader, 
                                 test_loader=test_loader,
                                 results_dir=dom_results_dir,
-                                ckpt_freq=cfg['ckpt_freq'])
+                                ckpt_freq=cfgs['ckpt_freq'])
 
 if __name__ == '__main__':
     main()
