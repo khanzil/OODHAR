@@ -37,7 +37,7 @@ class Algorithm():
             '''
                 Calculate metrics on validation set and train.
             '''
-            if (step+1) % [val_freq] == 0:
+            if (step+1) % val_freq == 0:
                 _, train_acc = self.validate_step(in_val_loader)
                 _, val_acc = self.validate_step(out_val_loader)
                 _, test_acc = self.validate_step(test_loader)
