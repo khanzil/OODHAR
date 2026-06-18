@@ -21,12 +21,12 @@ def init_train(cfgs, args):
     results_dir = os.path.join('./results', cfgs['dataset'], cfgs['train_id'])
     if cfgs['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
-            print(f'{results_dir} Already existed!')
+            print(f"{results_dir} Already existed!")
 
         os.makedirs(os.path.join(results_dir, 'ckpts'))
         
         yaml = YAML()
-        with open(os.path.join(results_dir, f'config_{cfgs['train_id']}.yaml'), 'w') as f:
+        with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
             yaml.dump(cfgs, f)
         # shutil.copy('./configs/config.yaml', results_dir)
 
