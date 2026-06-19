@@ -46,7 +46,7 @@ if __name__ == '__main__':
         if search < args.search_start:
             continue
         print(f'Starting {cfg_yaml}')
-        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={search}', shell=True)
+        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={seed}', shell=True)
 
 
 
