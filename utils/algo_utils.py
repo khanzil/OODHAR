@@ -388,9 +388,9 @@ class IRM(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
 
-        if self.cuda:
-            all_x = all_x.cuda()
-            all_y = all_y.cuda()
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
 
         pred = self.predict(all_x)
 
