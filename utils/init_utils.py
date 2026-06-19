@@ -100,7 +100,7 @@ def get_dataloader(cfgs, args):
         train_loaders = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
                                             batch_size=cfgs['batch_size'],
-                                            num_workers=int(args.num_workers/len(train_dataset)) if int(args.num_workers/len(train_dataset))!=0 else 1)
+                                            num_workers=int(args.num_workers/len(train_dataset)))
                         for dataset, weights in train_datasets]
         train_loaders = zip(*train_loaders)
 

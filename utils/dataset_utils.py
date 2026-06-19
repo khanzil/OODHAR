@@ -8,9 +8,8 @@ class Glasgow(Dataset):
     def __init__(self, fold, cfgs):
         super().__init__()
         dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset'])
-        # Because we are using multiple loaders in this code, num_workers should be calculated and dependent on dataset
-        # 
-        self.num_workers = 1
+        # Because we are using multiple loaders in this code, num_workers should be calculated and depends on dataset
+        self.num_workers = 2
         self.cfgs = cfgs
         self.fold = fold
         self.fold_dir = os.path.join(dataset_dir,fold)
