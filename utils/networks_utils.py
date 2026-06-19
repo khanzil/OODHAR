@@ -136,8 +136,11 @@ class GradReverse(Function):
     
     @staticmethod
     def backward(ctx, grad_output):
+        grad_input = None
         _, lambd = ctx.saved_tensors
-        return -lambd*grad_output
+        if ctx.needs_input_grad[0]:
+            grad_input = - lambd*grad_output
+        return grad_input, None
 
 class GRL(nn.Module):
     def __init__(self, lambd):
