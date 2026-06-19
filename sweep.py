@@ -43,10 +43,10 @@ if __name__ == '__main__':
 
     # # run subprocesses for each congis_{i}.yaml
     for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
-        if search < args.start_trials:
+        if search < args.search_start:
             continue
         print(f'Starting {cfg_yaml}')
-        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={seed}', shell=True)
+        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={search}', shell=True)
 
 
 
