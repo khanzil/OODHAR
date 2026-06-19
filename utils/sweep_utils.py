@@ -30,8 +30,8 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
         new_cfgs[new_cfgs['algorithm']]['lambd_iter'] = int(np.random.uniform(700, 800))
 
     elif new_cfgs['algorithm'] == 'IRM':
-        new_cfgs[new_cfgs['algorithm']]['iter'] = int(np.random.uniform(0,20))
-        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-1, 1)
+        new_cfgs[new_cfgs['algorithm']]['iter'] = int(np.random.uniform(500,700))
+        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-1, 2)
 
     return new_cfgs
 
