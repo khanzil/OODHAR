@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Sweep for hyperparameter search",add_help=True)
     parser.add_argument('-c', '--config_file', help='Specify config file', metavar='FILE')
     parser.add_argument('--n_trials', type=int, default=3, help='Number of trials for each algo, affect how data is divided')
-    parser.add_argument('--seed_start', type=int, default=0, help='To continue search if needed')
+    parser.add_argument('--search_start', type=int, default=0, help='To continue search if needed')
     parser.add_argument('--n_searchs', type=int, default=4, help='Number of hyperparameter searchs')
     parser.add_argument('--trial_seed', type=int, default=0, help='Seed for sweeping, affect how hyperparameter is generated')
     parser.add_argument('--n_test_doms', type=int, default=1, help='Number of test domains')
