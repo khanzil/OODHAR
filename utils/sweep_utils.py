@@ -10,7 +10,7 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
 
     # same for every configs
     new_cfgs['learning_rate'] = 5 * 10**np.random.uniform(-5,-4)
-    new_cfgs['weight_decay'] = 10**np.random.uniform(-5,-4)
+    new_cfgs['weight_decay'] = 10**np.random.uniform(-5,-3)
     new_cfgs['batch_size'] = 2**np.random.randint(3,5)
 
 
