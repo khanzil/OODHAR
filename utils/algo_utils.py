@@ -260,7 +260,7 @@ class DANN(Algorithm):
         all_y = all_y.to(device, non_blocking=True)
         all_d = all_d.to(device, non_blocking=True)
 
-        running_lambd = self.lambd * (2/(1+torch.exp(-step/self.lambd_iter))-1)
+        running_lambd = self.lambd * (2/(1+np.exp((-step/self.lambd_iter)))-1)
         self.discriminator[0] = GRL(lambd=running_lambd)     
 
         all_z = self.featurizer(all_x)
