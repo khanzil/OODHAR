@@ -68,7 +68,7 @@ class Algorithm():
             '''
                 Save the checkpoints
             '''
-            if step+1 % ckpt_freq == 0: 
+            if step+1 % ckpt_freq == 0 or step==total_step-1: 
                 self.save_ckpt(step, results_dir)
             
         output_file = open(os.path.join(results_dir, 'loss_list.json'), 'a', encoding='utf-8')
@@ -132,7 +132,6 @@ class ERM(Algorithm):
 
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
-        len_minibatch = len(all_y)
 
         if self.cuda:
             all_x = all_x.cuda()
@@ -144,7 +143,7 @@ class ERM(Algorithm):
         loss_class.backward()
         self.optimizer.step()
 
-        return {'loss_class' : loss_class.item()/len_minibatch}
+        return {'loss_class' : loss_class.item()}
 
     def predict(self, x):
         return self.network(x)
@@ -228,6 +227,8 @@ class DANN(Algorithm):
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
+
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss() 
         else:
@@ -251,7 +252,6 @@ class DANN(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
-        len_minibatch = len(all_y)
 
         if self.cuda:
             all_x = all_x.cuda()
@@ -274,9 +274,9 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        return {'loss': loss.item()/len_minibatch, 
-                'loss_class': loss_class.item()/len_minibatch,
-                'loss_domain': loss_domain.item()/len_minibatch}
+        return {'loss': loss.item(), 
+                'loss_class': loss_class.item(),
+                'loss_domain': loss_domain.item()}
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
@@ -387,7 +387,6 @@ class IRM(Algorithm):
 
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
-        len_minibatch = len(all_y)
 
         if self.cuda:
             all_x = all_x.cuda()
@@ -399,11 +398,12 @@ class IRM(Algorithm):
         running_idx = 0 # this is to seperate predictions of each domain, if even batchsize is used for all domain, this can should be handled cleaner
         irm_loss = 0
         if step >= self.irm_iter:
-            for i, (x,y,_) in enumerate(minibatches):
+            for i_dom, (x,_,_) in enumerate(minibatches):
                 d_pred = pred[running_idx:running_idx + x.shape[0]]
+                d_y = all_y[running_idx:running_idx + x.shape[0]]
                 running_idx += x.shape[0]
-                irm_loss += self._irm_penalty(d_pred,y)
-            irm_loss /= len(minibatches)
+                irm_loss += self._irm_penalty(d_pred,d_y)
+            irm_loss /= all_x.shape[0]
 
         loss = loss_class + self.lambd * irm_loss
 
@@ -411,9 +411,9 @@ class IRM(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        return {'loss': loss.item()/len_minibatch,
-                'loss_class': loss_class.item()/len_minibatch,
-                'loss_irm': irm_loss.item()/len_minibatch}
+        return {'loss': loss.item(),
+                'loss_class': loss_class.item(),
+                'loss_irm': irm_loss.item()}
 
     def predict(self, x):
         return self.network(x)

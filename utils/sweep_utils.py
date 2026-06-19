@@ -27,7 +27,7 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
     # algo-based cfgs
     if new_cfgs['algorithm'] == 'DANN':
         new_cfgs['lambd'] = 10**np.random.uniform(-3, -1)
-        new_cfgs['d_steps_per_g_step'] = int(2**np.random.uniform(2, 4))
+        new_cfgs['d_steps_per_g_step'] = int(2**np.random.uniform(0, 3))
 
     return new_cfgs
 
