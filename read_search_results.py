@@ -2,7 +2,7 @@ import numpy as np
 import os
 import json
 
-root_dir = './results/Glasgow'
+root_dir = './results/Glasgow/Old'
 search_list = [fold for fold in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir,fold)) and 'seed' in fold]
 search_results = []
 feas = []

@@ -1,10 +1,13 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.autograd as autograd
 import numpy as np
 import os
 from tqdm import tqdm
 from utils.networks_utils import Featurizer, Classifier, GRL
 import json
+
 
 class Algorithm():
     '''
@@ -65,10 +68,10 @@ class Algorithm():
             '''
                 Save the checkpoints
             '''
-            if step % ckpt_freq == 0 or step==total_step-1: 
+            if step+1 % ckpt_freq == 0: 
                 self.save_ckpt(step, results_dir)
             
-        output_file = open(os.path.join(results_dir, 'loss_list'), 'a', encoding='utf-8')
+        output_file = open(os.path.join(results_dir, 'loss_list.json'), 'a', encoding='utf-8')
         for dic in loss_list:
             json.dump(dic, output_file)
             output_file.write("\n")
@@ -129,7 +132,7 @@ class ERM(Algorithm):
 
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
-        minibatch_len = len(all_y)
+        len_minibatch = len(all_y)
 
         if self.cuda:
             all_x = all_x.cuda()
@@ -141,7 +144,7 @@ class ERM(Algorithm):
         loss_class.backward()
         self.optimizer.step()
 
-        return {'loss_class' : loss_class.item()/minibatch_len}
+        return {'loss_class' : loss_class.item()/len_minibatch}
 
     def predict(self, x):
         return self.network(x)
@@ -240,7 +243,7 @@ class DANN(Algorithm):
             self.classifier.cuda()
             self.discriminator.cuda()
 
-    def update(self, minibatches, epoch, unlabeled=None):
+    def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
         self.discriminator.train()
@@ -248,6 +251,7 @@ class DANN(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
+        len_minibatch = len(all_y)
 
         if self.cuda:
             all_x = all_x.cuda()
@@ -261,7 +265,7 @@ class DANN(Algorithm):
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.loss_type_d(pred_d, all_d)
-        if epoch % self.d_steps_per_g_step == 0:
+        if step % self.d_steps_per_g_step == 0:
             loss = loss_class + loss_domain * self.lambd
         else:
             loss = loss_class
@@ -270,9 +274,9 @@ class DANN(Algorithm):
         loss.backward()
         self.optimizer.step()
 
-        return {'loss': loss.item(), 
-                'loss_class': loss_class.item(),
-                'loss_domain': loss_domain.item()}
+        return {'loss': loss.item()/len_minibatch, 
+                'loss_class': loss_class.item()/len_minibatch,
+                'loss_domain': loss_domain.item()/len_minibatch}
 
     def predict(self, x):
         return self.classifier(self.featurizer(x))
@@ -356,42 +360,60 @@ class IRM(Algorithm):
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
+            self.irm_loss = F.cross_entropy
         else:
             raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
-       
+        
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
 
-        self.irm_iter = cfgs['IRM']['irm_iter']
+        self.irm_iter = cfgs['IRM']['iter']
         self.lambd = cfgs['IRM']['lambd'] 
 
-    def irm_loss():
-        pass
+    def _irm_penalty(self, pred, y):
+        device = 'cuda' if self.cuda else 'cpu'
+        scale = torch.tensor(1.).to(device).requires_grad_()
+        loss_1 = self.irm_loss(pred[::2] * scale, y[::2])
+        loss_2 = self.irm_loss(pred[1::2] * scale, y[1::2])
+        grad_1 = autograd.grad(loss_1, [scale], create_graph=True)[0]
+        grad_2 = autograd.grad(loss_2, [scale], create_graph=True)[0]
+        result = torch.sum(grad_1 * grad_2)
+        return result
 
-    def update(self, train_loader, epoch, unlabeled=None):
+    def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
-        loader_len = 0.0
-        total_loss_class = 0.0
 
-        for batch_idx, (all_x, all_y, all_d) in enumerate(train_loader):
-            if self.cuda:
-                all_x = all_x.cuda()
-                all_y = all_y.cuda()
+        all_x = torch.cat([x for x,_,_ in minibatches])
+        all_y = torch.cat([y for _,y,_ in minibatches])
+        len_minibatch = len(all_y)
 
-            loss_class = self.loss_type(self.predict(all_x), all_y)
+        if self.cuda:
+            all_x = all_x.cuda()
+            all_y = all_y.cuda()
 
-            self.optimizer.zero_grad()
-            loss_class.backward()
-            self.optimizer.step()
+        pred = self.predict(all_x)
 
-            total_loss_class += loss_class.item()
-            loader_len += all_x.shape[0]
+        loss_class = self.loss_type(pred, all_y)
+        running_idx = 0 # this is to seperate predictions of each domain, if even batchsize is used for all domain, this can should be handled cleaner
+        irm_loss = 0
+        if step >= self.irm_iter:
+            for i, (x,y,_) in enumerate(minibatches):
+                d_pred = pred[running_idx:running_idx + x.shape[0]]
+                running_idx += x.shape[0]
+                irm_loss += self._irm_penalty(d_pred,y)
+            irm_loss /= len(minibatches)
 
-        total_loss_class /= loader_len
+        loss = loss_class + self.lambd * irm_loss
 
-        return {'loss_class' : total_loss_class}
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()/len_minibatch,
+                'loss_class': loss_class.item()/len_minibatch,
+                'loss_irm': irm_loss.item()/len_minibatch}
 
     def predict(self, x):
         return self.network(x)
@@ -404,7 +426,7 @@ class IRM(Algorithm):
 
         pred_list = []
 
-        for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+        for batch_idx, (all_x, all_y, _) in enumerate(loader):
             if self.cuda:
                 all_x = all_x.cuda()
                 all_y = all_y.cuda()
@@ -415,7 +437,7 @@ class IRM(Algorithm):
                 num_corrects = torch.eq(pred, all_y).sum()
                 pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()      
+                acc += num_corrects.cpu().numpy()
                 loader_len += all_x.shape[0]
 
         self.featurizer.train()

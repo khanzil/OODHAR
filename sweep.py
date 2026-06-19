@@ -10,6 +10,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Sweep for hyperparameter search",add_help=True)
     parser.add_argument('-c', '--config_file', help='Specify config file', metavar='FILE')
     parser.add_argument('--n_trials', type=int, default=3, help='Number of trials for each algo, affect how data is divided')
+    parser.add_argument('--trial_start', type=int, default=0, help='To continue search if needed')
     parser.add_argument('--n_searchs', type=int, default=20, help='Number of hyperparameter searchs')
     parser.add_argument('--trial_seed', type=int, default=0, help='Seed for sweeping, affect how hyperparameter is generated')
     parser.add_argument('--n_test_doms', type=int, default=1, help='Number of test domains')
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     cfg_yaml_list = []
     train_id = 0
     
-    for seed in range(args.n_trials):
+    for seed in range(args.trial_start, args.n_trials):
         # only support single test domain for now, this seed controls RNG for dataset divison
         for search in range(args.n_searchs):
             new_cfg = get_random_search_configs(cfg, seed, search, args.algo, args.featurizer)

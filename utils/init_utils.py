@@ -1,12 +1,13 @@
 import os
 import numpy as np
 from torch.utils.data import DataLoader, Subset, ConcatDataset
-from utils.algo_utils import ERM, DANN
+from utils.algo_utils import *
 from utils.dataset_utils import *
 
 algos_dict = {
     'ERM'   : ERM,
-    'DANN'  : DANN
+    'DANN'  : DANN,
+    'IRM'   : IRM
 }
 
 datasets_dict = {
@@ -74,8 +75,51 @@ def get_dataloader(cfgs, args):
 
 
 
-    # elif cfgs['test_dom'] == cfgs['val_dom']:
-        # test-domain validation set (oracle)
+    elif cfgs['test_dom'] == "IID":
+        train_datasets = []
+        val_datasets = []
+        test_datasets = []
+
+        for fold in dom_list:
+            dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
+
+            idx = np.arange(len(dataset))
+            np.random.shuffle(idx)
+            train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))])
+            val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset)):-int(cfgs['test_split']*len(dataset))])
+            test_dataset = Subset(dataset, idx[-int(cfgs['test_split']*len(dataset)):])
+
+            train_weights = make_weights_for_balanced_classes(train_dataset)
+
+            train_datasets.append((train_dataset, train_weights))
+            val_datasets.append(val_dataset)
+            test_datasets.append(test_dataset)
+
+        total_batch_size = len(train_datasets)*cfgs['batch_size']
+
+        train_loaders = [InfiniteDataLoader(dataset=dataset,
+                                            weights=weights,
+                                            batch_size=cfgs['batch_size'],
+                                            num_workers=int(args.num_workers/len(train_dataset)) if int(args.num_workers/len(train_dataset))!=0 else 1)
+                        for dataset, weights in train_datasets]
+        train_loaders = zip(*train_loaders)
+
+        in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                    batch_size=total_batch_size,
+                                    num_workers=args.num_workers)
+        out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
+                                 batch_size=total_batch_size,
+                                 num_workers=args.num_workers)
+
+        test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
+                                  batch_size=total_batch_size,
+                                  num_workers=args.num_workers,
+                                  shuffle=False)
+
+        loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))        
+
+
+
 
     else:
         # Single test_dom case
