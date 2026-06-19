@@ -129,18 +129,23 @@ class MNIST_CNN(nn.Module):
         return self.activation(x)
 
 class GradReverse(Function):
-    def forward(self, x):
-        return x.view_as(x)
-
-    def backward(self, grad_output):
-        return -grad_output
+    @staticmethod
+    def forward(ctx, x, lambd):
+        ctx.save_for_backward(x, lambd)
+        return x
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        _, lambd = ctx.saved_tensors
+        return -lambd*grad_output
 
 class GRL(nn.Module):
-    def __init__(self):
+    def __init__(self, lambd):
         super().__init__()
+        self.lambd = torch.tensor(lambd, requires_grad=False)
 
     def forward(self,x):
-        return GradReverse.apply(x)
+        return GradReverse().apply(x,self.lambd)
 
 featurizer_dict = {
     'MLP'       : MLP,

@@ -28,9 +28,10 @@ loss_type: CrossEntropy
 # DANN
 DANN:
   lambd: 0.2
+  lambd_iter: 500
   loss_type_d: CrossEntropy
   nonlinear_discriminator: true
-  d_steps_per_g_step: 1
+  # d_steps_per_g_step: 1
 # IRM
 IRM:
   iter: 0

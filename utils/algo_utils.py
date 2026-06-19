@@ -133,9 +133,9 @@ class ERM(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
 
-        if self.cuda:
-            all_x = all_x.cuda()
-            all_y = all_y.cuda()
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
 
         loss_class = self.loss_type(self.predict(all_x), all_y)
         
@@ -157,9 +157,9 @@ class ERM(Algorithm):
         pred_list = []
 
         for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
-            if self.cuda:
-                all_x = all_x.cuda()
-                all_y = all_y.cuda()
+            device = 'cuda' if self.cuda else 'cpu'
+            all_x = all_x.to(device, non_blocking=True)
+            all_y = all_y.to(device, non_blocking=True)
 
             with torch.no_grad():
                 pred = self.predict(all_x)
@@ -175,14 +175,14 @@ class ERM(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, epoch, results_dir, is_best=False):
+    def save_ckpt(self, step, results_dir, is_best=False):
         if is_best:
             checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
-            'epoch': epoch,
+            'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
@@ -194,20 +194,21 @@ class ERM(Algorithm):
 
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path, weights_only=False)
-        epoch = state_dict['epoch']
+        step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
-        return epoch
+        return step
 
 class DANN(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda
         self.lambd = cfgs['DANN']['lambd']
-        self.d_steps_per_g_step = cfgs['DANN']['d_steps_per_g_step']
+        self.lambd_iter = cfgs['DANN']['lambd_iter']
+        # self.d_steps_per_g_step = cfgs['DANN']['d_steps_per_g_step']
         self.featurizer = Featurizer(cfgs)
         self.classifier = Classifier(
             self.featurizer.n_outputs,
@@ -216,18 +217,18 @@ class DANN(Algorithm):
         )
 
         self.discriminator = nn.Sequential(
-            GRL(),
+            GRL(lambd=0.0),
             Classifier(
             self.featurizer.n_outputs,
             cfgs['num_domains'],
             cfgs['DANN']['nonlinear_discriminator']
             )
         )
-        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())+list(self.discriminator.parameters())), 
+
+        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
-
 
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss() 
@@ -253,10 +254,14 @@ class DANN(Algorithm):
         all_y = torch.cat([y for _,y,_ in minibatches])
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
 
-        if self.cuda:
-            all_x = all_x.cuda()
-            all_y = all_y.cuda()
-            all_d = all_d.cuda()
+
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
+        all_d = all_d.to(device, non_blocking=True)
+
+        running_lambd = self.lambd * (2/(1+torch.exp(-step/self.lambd_iter))-1)
+        self.discriminator[0] = GRL(lambd=running_lambd)     
 
         all_z = self.featurizer(all_x)
 
@@ -265,10 +270,8 @@ class DANN(Algorithm):
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.loss_type_d(pred_d, all_d)
-        if step % self.d_steps_per_g_step == 0:
-            loss = loss_class + loss_domain * self.lambd
-        else:
-            loss = loss_class
+
+        loss = loss_class + loss_domain
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -289,9 +292,10 @@ class DANN(Algorithm):
         loader_len = 0.0
 
         for batch_idx, (all_x, all_y, _) in enumerate(loader):
-            if self.cuda:
-                all_x = all_x.cuda()
-                all_y = all_y.cuda()
+            device = 'cuda' if self.cuda else 'cpu'
+            all_x = all_x.to(device, non_blocking=True)
+            all_y = all_y.to(device, non_blocking=True)
+
 
             with torch.no_grad():
                 all_z = self.featurizer(all_x)
@@ -308,15 +312,15 @@ class DANN(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, epoch, results_dir, is_best=False):
+    def save_ckpt(self, step, results_dir, is_best=False):
         if is_best:
             checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
             os.remove(checkpoint_path)
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
-            'epoch': epoch,
+            'step': step,
             'featurizer': self.featurizer.state_dict(),
             'classifier': self.classifier.state_dict(),
             'discriminator': self.discriminator.state_dict(),
@@ -330,7 +334,7 @@ class DANN(Algorithm):
 
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path, weights_only=False)
-        epoch = state_dict['epoch']
+        step = state_dict['step']
         self.featurizer.load_state_dict(state_dict['featurizer'])
         self.classifier.load_state_dict(state_dict['classifier'])
         self.discriminator.load_state_dict(state_dict['discriminator'])
@@ -339,7 +343,7 @@ class DANN(Algorithm):
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
-        return epoch
+        return step
 
 
 
@@ -357,6 +361,8 @@ class IRM(Algorithm):
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
+        self.lr = cfgs['learning_rate']
+        self.wd = cfgs['weight_decay']
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
@@ -405,6 +411,11 @@ class IRM(Algorithm):
                 irm_loss += self._irm_penalty(d_pred,d_y)
             irm_loss /= all_x.shape[0]
 
+        if step == self.irm_iter:
+            self.optimizer = torch.optim.Adam(self.network.parameters(), 
+                                              lr=self.lr,
+                                              weight_decay=self.wd)
+
         loss = loss_class + self.lambd * irm_loss
 
         self.optimizer.zero_grad()
@@ -445,14 +456,14 @@ class IRM(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, epoch, results_dir, is_best=False):
+    def save_ckpt(self, step, results_dir, is_best=False):
         if is_best:
             checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Epoch_{epoch}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
-            'epoch': epoch,
+            'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
@@ -464,14 +475,14 @@ class IRM(Algorithm):
 
     def load_ckpt(self, checkpoint_path):
         state_dict = torch.load(checkpoint_path, weights_only=False)
-        epoch = state_dict['epoch']
+        step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
         torch.set_rng_state(state_dict['rng'])
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
-        return epoch
+        return step
 
 
 

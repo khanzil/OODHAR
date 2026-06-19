@@ -26,11 +26,11 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
 
     # algo-based cfgs
     if new_cfgs['algorithm'] == 'DANN':
-        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-3, -1)
-        new_cfgs[new_cfgs['algorithm']]['d_steps_per_g_step'] = int(2**np.random.uniform(0, 3))
+        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-2, 0)
+        new_cfgs[new_cfgs['algorithm']]['lambd_iter'] = int(2**np.random.uniform(0, 3))
 
     elif new_cfgs['algorithm'] == 'IRM':
-        new_cfgs[new_cfgs['algorithm']]['iter'] = int(10**np.random.uniform(-1,-2))
+        new_cfgs[new_cfgs['algorithm']]['iter'] = 2*int(10**np.random.uniform(2,3))
         new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-5, 4)
 
     return new_cfgs
