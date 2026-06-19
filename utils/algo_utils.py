@@ -402,7 +402,7 @@ class IRM(Algorithm):
 
         loss_class = self.loss_type(pred, all_y)
         running_idx = 0 # this is to seperate predictions of each domain, if even batchsize is used for all domain, this can should be handled cleaner
-        irm_loss = 0
+        irm_loss = torch.tensor(0.0, requires_grad=False).to(device)
         if step >= self.irm_iter:
             for i_dom, (x,_,_) in enumerate(minibatches):
                 d_pred = pred[running_idx:running_idx + x.shape[0]]
