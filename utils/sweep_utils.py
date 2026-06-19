@@ -26,7 +26,7 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
 
     # algo-based cfgs
     if new_cfgs['algorithm'] == 'DANN':
-        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-1, 1)
+        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-2, -1)
         new_cfgs[new_cfgs['algorithm']]['lambd_iter'] = int(np.random.uniform(500,700))
 
     elif new_cfgs['algorithm'] == 'IRM':
