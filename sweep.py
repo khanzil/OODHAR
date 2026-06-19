@@ -35,7 +35,7 @@ if __name__ == '__main__':
             new_cfg = get_random_search_configs(cfg, seed, search, args.algo, args.featurizer)
             cfg_yaml_list.append((f"./configs/sweep/config_{new_cfg['train_id']}.yaml",seed,search))
             # create config_{i}.yaml for each cfg
-            with open(cfg_yaml_list[-1], 'w') as f:
+            with open(cfg_yaml_list[-1][0], 'w') as f:
                 yaml.dump(new_cfg, f)
 
             train_id += 1
