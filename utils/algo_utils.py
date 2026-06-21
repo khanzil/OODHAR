@@ -551,7 +551,7 @@ class Fish(Algorithm):
         meta_weights += self.lr_meta * (inner_weights - meta_weights)
         self.network.load_state_dict(meta_weights)
 
-        return {'loss_class' : loss_class_inner/len(minibatches)}
+        return {'loss_class' : loss_class/len(minibatches)}
 
     def predict(self, x):
         return self.network(x)
