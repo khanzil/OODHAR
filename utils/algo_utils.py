@@ -22,7 +22,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, test_loader, val_freq, ckpt_freq, results_dir=None, cur_step=0):
+    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, test_loader, val_freq, ckpt_freq, results_dir=None, ckpts_dir=None, cur_step=0):
         '''
             Trainer function that performs training over num_steps steps.
         '''
@@ -69,7 +69,7 @@ class Algorithm():
                 Save the checkpoints
             '''
             if step+1 % ckpt_freq == 0 or step==total_step-1: 
-                self.save_ckpt(step, results_dir)
+                self.save_ckpt(step, ckpts_dir)
             
         output_file = open(os.path.join(results_dir, 'loss_list.json'), 'a', encoding='utf-8')
         for dic in loss_list:
@@ -175,11 +175,11 @@ class ERM(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, step, results_dir, is_best=False):
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
             'step': step,
@@ -312,12 +312,12 @@ class DANN(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, step, results_dir, is_best=False):
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
             os.remove(checkpoint_path)
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
             'step': step,
@@ -456,11 +456,11 @@ class IRM(Algorithm):
 
         return pred_list, acc/loader_len
 
-    def save_ckpt(self, step, results_dir, is_best=False):
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Best_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
         else:
-            checkpoint_path = os.path.join(results_dir, 'ckpts' ,f'Step_{step}_ckpt.pth.rar')
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
 
         state_dict = {
             'step': step,
@@ -486,6 +486,106 @@ class IRM(Algorithm):
 
 
 
+class Fish(Algorithm):
+    def __init__ (self, cfgs, args):
+        self.cuda = args.cuda
+        self.featurizer = Featurizer(cfgs)
+        self.classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            cfgs['nonlinear_classifier']
+        )
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(self.network.parameters(), 
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
+        
+        if cfgs['loss_type'] == 'CrossEntropy':
+            self.loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
+       
+        if self.cuda:
+            self.featurizer.cuda()
+            self.classifier.cuda()
+
+    def update(self, minibatches, step, unlabeled=None):
+        self.featurizer.train()
+        self.classifier.train()
+
+        all_x = torch.cat([x for x,_,_ in minibatches])
+        all_y = torch.cat([y for _,y,_ in minibatches])
+
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
+
+        loss_class = self.loss_type(self.predict(all_x), all_y)
+        
+        self.optimizer.zero_grad()
+        loss_class.backward()
+        self.optimizer.step()
+
+        return {'loss_class' : loss_class.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+    def validate_step(self, loader):
+        self.featurizer.eval()
+        self.classifier.eval()
+        acc = 0.0
+        loader_len = 0.0
+
+        pred_list = []
+
+        for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+            device = 'cuda' if self.cuda else 'cpu'
+            all_x = all_x.to(device, non_blocking=True)
+            all_y = all_y.to(device, non_blocking=True)
+
+            with torch.no_grad():
+                pred = self.predict(all_x)
+                _, pred = pred.max(1) # same as np.argmax()
+                num_corrects = torch.eq(pred, all_y).sum()
+                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+
+                acc += num_corrects.cpu().numpy()      
+                loader_len += all_x.shape[0]
+
+        self.featurizer.train()
+        self.classifier.train()
+
+        return pred_list, acc/loader_len
+
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
+
+        state_dict = {
+            'step': step,
+            'network': self.network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'rng': torch.get_rng_state(),
+            'np_random': np.random.get_state(),
+        }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)        
+
+    def load_ckpt(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, weights_only=False)
+        step = state_dict['step']
+        self.network.load_state_dict(state_dict['network'])
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        torch.set_rng_state(state_dict['rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        np.random.set_state(state_dict['np_random'])
+        return step
 
 
 
