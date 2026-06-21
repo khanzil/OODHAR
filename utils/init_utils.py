@@ -7,7 +7,8 @@ from utils.dataset_utils import *
 algos_dict = {
     'ERM'   : ERM,
     'DANN'  : DANN,
-    'IRM'   : IRM
+    'IRM'   : IRM,
+    'Fish'  : Fish,
 }
 
 datasets_dict = {
