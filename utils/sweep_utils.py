@@ -26,12 +26,15 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
 
     # algo-based cfgs
     if new_cfgs['algorithm'] == 'DANN':
-        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-3, -2)
-        new_cfgs[new_cfgs['algorithm']]['lambd_iter'] = int(np.random.uniform(500,700))
+        new_cfgs['DANN']['lambd'] = 10**np.random.uniform(-3, -2)
+        new_cfgs['DANN']['lambd_iter'] = int(np.random.uniform(500,700))
 
     elif new_cfgs['algorithm'] == 'IRM':
-        new_cfgs[new_cfgs['algorithm']]['iter'] = int(np.random.uniform(500,700))
-        new_cfgs[new_cfgs['algorithm']]['lambd'] = 10**np.random.uniform(-1, 2)
+        new_cfgs['IRM']['iter'] = int(np.random.uniform(500,700))
+        new_cfgs['IRM']['lambd'] = 10**np.random.uniform(-1, 2)
+
+    elif new_cfgs['algorithm'] == 'Fish':
+        new_cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-2, -1)
 
     return new_cfgs
 

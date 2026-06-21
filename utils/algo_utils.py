@@ -5,8 +5,9 @@ import torch.autograd as autograd
 import numpy as np
 import os
 from tqdm import tqdm
-from utils.networks_utils import Featurizer, Classifier, GRL
+from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
 import json
+import copy
 
 
 class Algorithm():
@@ -510,24 +511,47 @@ class Fish(Algorithm):
             self.featurizer.cuda()
             self.classifier.cuda()
 
+        self.featurizer_inner = Featurizer(cfgs)
+        self.classifier_inner = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            cfgs['nonlinear_classifier']
+        )
+
+        self.network_inner = nn.Sequential(self.featurizer_inner, self.classifier_inner)
+        self.optimizer_inner = torch.optim.Adam(self.network_inner.parameters(), 
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
+
+        self.lr_meta = cfgs['Fish']['lr_meta']
+
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
 
-        all_x = torch.cat([x for x,_,_ in minibatches])
-        all_y = torch.cat([y for _,y,_ in minibatches])
+        self.featurizer_inner.train()
+        self.classifier_inner.train()
+
+        loss_class = 0.0
 
         device = 'cuda' if self.cuda else 'cpu'
-        all_x = all_x.to(device, non_blocking=True)
-        all_y = all_y.to(device, non_blocking=True)
+        self.network_inner.load_state_dict(self.network.state_dict())
+        for i, (x,y,_) in minibatches:
+            x = x.to(device)
+            y = y.to(device)
+            loss_class_inner = self.loss_type(self.network_inner(x), y)
+            loss_class += loss_class_inner.item()
 
-        loss_class = self.loss_type(self.predict(all_x), all_y)
-        
-        self.optimizer.zero_grad()
-        loss_class.backward()
-        self.optimizer.step()
+            self.optimizer_inner.zero_grad()
+            loss_class_inner.backward()
+            self.optimizer_inner.step()
 
-        return {'loss_class' : loss_class.item()}
+        meta_weights = ParamDict(self.network.state_dict())
+        inner_weights = ParamDict(self.network_inner.state_dict())
+        meta_weights += self.lr_meta * (inner_weights - meta_weights)
+        self.network.load_state_dict(meta_weights)
+
+        return {'loss_class' : loss_class_inner/len(minibatches)}
 
     def predict(self, x):
         return self.network(x)
@@ -569,6 +593,8 @@ class Fish(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
+            'network_inner': self.network_inner.state_dict(),
+            'optimizer_inner': self.optimizer_inner.state_dict(),
             'rng': torch.get_rng_state(),
             'np_random': np.random.get_state(),
         }
@@ -581,6 +607,8 @@ class Fish(Algorithm):
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
+        self.network_inner.load_state_dict(state_dict['network_inner']),
+        self.optimizer_inner.load_state_dict(state_dict['optimizer_inner']),
         torch.set_rng_state(state_dict['rng'])
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
