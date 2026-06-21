@@ -8,7 +8,7 @@ def main():
     cfgs, args = get_agrs_parser()
 
     if args.mode == 'train':
-        algo, loaders, results_dir = init_train(cfgs, args)
+        algo, loaders, results_dir, ckpts_dir = init_train(cfgs, args)
 
         if cfgs['load_checkpoint'] == 'None':
             cur_step = 0
@@ -30,6 +30,7 @@ def main():
                                 out_val_loader=out_val_loader, 
                                 test_loader=test_loader,
                                 results_dir=dom_results_dir,
+                                ckpts_dir=ckpts_dir,
                                 val_freq=cfgs['val_freq'],
                                 ckpt_freq=cfgs['ckpt_freq'])
 

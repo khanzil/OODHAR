@@ -19,12 +19,13 @@ def init_train(cfgs, args):
         create directories
     '''
     results_dir = os.path.join('./results', cfgs['dataset'], cfgs['train_id'])
+    ckpts_dir = os.path.join('./ckpts', cfgs['dataset'], cfgs['train_id'])
     if cfgs['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
             raise ValueError(f"{results_dir} Already existed!")
 
-
-        os.makedirs(os.path.join(results_dir, 'ckpts'))
+        os.makedirs(results_dir)
+        os.makedirs(ckpts_dir)
         
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
@@ -42,7 +43,7 @@ def init_train(cfgs, args):
     algo = get_algo(cfgs, args)
 
 
-    return algo, loaders, results_dir
+    return algo, loaders, results_dir, ckpts_dir
 
 def init_algo(cfgs, args):
     return get_algo(cfgs, args)
