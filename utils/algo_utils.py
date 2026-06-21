@@ -506,10 +506,6 @@ class Fish(Algorithm):
             self.loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
-       
-        if self.cuda:
-            self.featurizer.cuda()
-            self.classifier.cuda()
 
         self.featurizer_inner = Featurizer(cfgs)
         self.classifier_inner = Classifier(
@@ -524,6 +520,10 @@ class Fish(Algorithm):
                                           weight_decay=cfgs['weight_decay'])
 
         self.lr_meta = cfgs['Fish']['lr_meta']
+               
+        if self.cuda:
+            self.network.cuda()
+            self.network_inner.cuda()
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
