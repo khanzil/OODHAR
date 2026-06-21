@@ -536,7 +536,7 @@ class Fish(Algorithm):
 
         device = 'cuda' if self.cuda else 'cpu'
         self.network_inner.load_state_dict(self.network.state_dict())
-        for i, (x,y,_) in minibatches:
+        for x,y,_ in minibatches:
             x = x.to(device)
             y = y.to(device)
             loss_class_inner = self.loss_type(self.network_inner(x), y)
