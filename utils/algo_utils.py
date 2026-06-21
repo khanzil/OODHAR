@@ -225,7 +225,7 @@ class DANN(Algorithm):
             )
         )
 
-        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())), 
+        self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())+list(self.discriminator.parameters())), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
