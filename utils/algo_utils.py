@@ -532,8 +532,8 @@ class VRex(Algorithm):
 
         for i, (x, y, _) in enumerate(minibatches):
             d_pred = pred[running_idx:running_idx + x.shape[0]]
-            running_idx += x.shape[0]
             d_y = all_y[running_idx:running_idx + x.shape[0]]
+            running_idx += x.shape[0]
             d_loss = self.loss_type(d_pred, d_y)
             losses[i] = d_loss
 
