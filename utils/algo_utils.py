@@ -486,8 +486,6 @@ class IRM(Algorithm):
         return step
 
 
-
-
 class VRex(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda
@@ -536,7 +534,6 @@ class VRex(Algorithm):
             d_pred = pred[running_idx:running_idx + x.shape[0]]
             running_idx += x.shape[0]
             d_y = all_y[running_idx:running_idx + x.shape[0]]
-            running_idx += x.shape[0]
             d_loss = self.loss_type(d_pred, d_y)
             losses[i] = d_loss
 
@@ -622,7 +619,6 @@ class VRex(Algorithm):
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return step
-
 
 
 class Fish(Algorithm):
