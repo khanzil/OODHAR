@@ -38,6 +38,11 @@ IRM:
   lambd: 0.2
 Fish:
   lr_meta: 0.2
+VRex:
+  iter: 0
+  lambd: 0.2
+
+
 # model
 featurizer: ResNet
 nonlinear_classifier: true
