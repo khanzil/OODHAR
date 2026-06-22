@@ -9,6 +9,7 @@ algos_dict = {
     'DANN'  : DANN,
     'IRM'   : IRM,
     'Fish'  : Fish,
+    'VRex'  : VRex,
 }
 
 datasets_dict = {
