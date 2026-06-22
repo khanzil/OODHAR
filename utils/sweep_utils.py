@@ -33,8 +33,14 @@ def get_random_search_configs(cfgs, seed, search, algo, featurizer):
         new_cfgs['IRM']['iter'] = int(np.random.uniform(500,700))
         new_cfgs['IRM']['lambd'] = 10**np.random.uniform(-1, 1)
 
+    elif new_cfgs['algorithm'] == 'VRex':
+        new_cfgs['VRex']['iter'] = int(np.random.uniform(500,700))
+        new_cfgs['VRex']['lambd'] = 10**np.random.uniform(-1, 3)
+
     elif new_cfgs['algorithm'] == 'Fish':
         new_cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-2, -1)
+
+        
 
     return new_cfgs
 
