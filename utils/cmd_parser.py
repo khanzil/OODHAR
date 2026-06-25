@@ -25,13 +25,9 @@ def get_agrs_parser():
     yaml.default_flow_style = False
     with open(args.config_file, 'r') as f:
         cfgs = yaml.load(f)
-    yaml.dump(cfgs, sys.stdout, transform=replace_indent)
 
     return cfgs, args
 
-def replace_indent(stream):
-    stream = "     " + stream
-    return stream.replace("\n", "\n     ")
 
 
 

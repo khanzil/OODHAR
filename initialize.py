@@ -2,7 +2,8 @@ import os
 from ruamel.yaml import YAML
 import torch
 import numpy as np
-from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
+import sys
+from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed, replace_indent
 
 def init_train(cfgs, args):
     '''
@@ -40,11 +41,12 @@ def init_train(cfgs, args):
 
         os.makedirs(results_dir)
         os.makedirs(ckpts_dir)
-        
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
-            yaml.dump(cfgs, f)
-        # shutil.copy('./configs/config.yaml', results_dir)
+            yaml.dump(cfgs, f)    
+            yaml.dump(cfgs, sys.stdout)
+
+
 
     '''
         get dataloader
