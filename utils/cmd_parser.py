@@ -11,7 +11,7 @@ def get_agrs_parser():
     subparser = parser.add_subparsers(dest='mode')
     parser_train = subparser.add_parser('train')
     parser_train.add_argument('--seed', type=int, default=-1, metavar='N', help='Seed for datasplit')
-    parser_train.add_argument('--search', type=int, default=0, metavar='N', help='Seed for initialize and hyperparameter, search >= 0 will do random search')
+    parser_train.add_argument('--search', type=int, default=0, metavar='N', help='Seed for initialize and hyperparameter, search > 0 will do random search')
     parser_train.add_argument('--num_workers', type=int, default=1, metavar='N', help='Number of workers for validation loader.')
     parser_train.add_argument('--no_cuda', action='store_true', help='Do not use cuda.')
 

@@ -21,17 +21,17 @@ if __name__ == '__main__':
 
     # create a list of cfg to run each in a subprocess
     cfg_yaml_list = []
-    train_id = 0
     
     for seed in range(args.n_trials):
         # only support single test domain for now, this seed controls RNG for dataset divison
         for search in range(args.n_searchs):
             cfg_yaml_list.append((f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml",seed,search))
             # create config_{i}.yaml for each cfg
+            cfgs['train_id'] = f"seed{args.seed}_search{args.search}_{args.algo}_{args.featurizer}"
+            cfgs['algorithm'] = args.algo
+            cfgs['featurizer'] = args.featurizer
             with open(cfg_yaml_list[-1][0], 'w') as f:
                 yaml.dump(cfgs, f)
-
-            train_id += 1
             
 
     # # run subprocesses for each congis_{i}.yaml
