@@ -27,7 +27,7 @@ if __name__ == '__main__':
         for search in range(args.n_searchs):
             cfg_yaml_list.append((f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml",seed,search))
             # create config_{i}.yaml for each cfg
-            cfgs['train_id'] = f"seed{args.seed}_search{args.search}_{args.algo}_{args.featurizer}"
+            cfgs['train_id'] = f"seed{seed}_search{search}_{args.algo}_{args.featurizer}"
             cfgs['algorithm'] = args.algo
             cfgs['featurizer'] = args.featurizer
             with open(cfg_yaml_list[-1][0], 'w') as f:
