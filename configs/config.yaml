@@ -55,5 +55,5 @@ mlp_depth: 5
 # Resnet
 resnet18: true
 resnet_dropout: 0.1
-freeze_bn: true
-
+freeze_bn: false
+pretrain: false

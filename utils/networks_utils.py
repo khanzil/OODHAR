@@ -40,10 +40,16 @@ class ResNet(nn.Module):
     def __init__(self, input_shape, cfgs):
         super(ResNet, self).__init__()
         if cfgs['resnet18']:
-            self.network = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
+            if cfgs['pretrain']:
+                self.network = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
+            else:
+                self.network = torchvision.models.resnet18()
             self.n_outputs = 512
         else:
-            self.network = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
+            if cfgs['pretrain']:
+                self.network = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
+            else:
+                self.network = torchvision.models.resnet50()
             self.n_outputs = 2048
 
         # adapt number of channels

@@ -1,8 +1,11 @@
 import os
 import numpy as np
-from torch.utils.data import DataLoader, Subset, ConcatDataset
+import hashlib
+from torch.utils.data import DataLoader, random_split, ConcatDataset
+
 from utils.algo_utils import *
 from utils.dataset_utils import *
+from utils.sweep_utils import get_random_search_configs
 
 algos_dict = {
     'ERM'   : ERM,
@@ -16,7 +19,9 @@ datasets_dict = {
     'Glasgow'   : Glasgow
 }
 
-
+def get_random_seed(*args):
+    args_str = str(args)
+    return int(hashlib.md5(args_str.encode("utf-8")).hexdigest(), 16) % (2**32)
 
 def get_algo(cfgs, args):
     return algos_dict[cfgs['algorithm']](cfgs, args)
@@ -42,10 +47,9 @@ def get_dataloader(cfgs, args):
                     test_datasets.append(dataset)
 
                 else:
-                    idx = np.arange(len(dataset))
-                    np.random.shuffle(idx)
-                    train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))+1])
-                    val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset))+1:])
+                    train_dataset, val_dataset = random_split(dataset, 
+                                                              [int(cfgs['train_split']*len(dataset)), int((1-cfgs['train_split'])*len(dataset))],
+                                                              generator=torch.Generator.manual_seed(args.seed))
 
                     train_weights = make_weights_for_balanced_classes(train_dataset)
 
@@ -76,7 +80,6 @@ def get_dataloader(cfgs, args):
             loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
 
 
-
     elif cfgs['test_dom'] == "IID":
         train_datasets = []
         val_datasets = []
@@ -85,11 +88,11 @@ def get_dataloader(cfgs, args):
         for fold in dom_list:
             dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
 
-            idx = np.arange(len(dataset))
-            np.random.shuffle(idx)
-            train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))])
-            val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset)):-int(cfgs['test_split']*len(dataset))])
-            test_dataset = Subset(dataset, idx[-int(cfgs['test_split']*len(dataset)):])
+            train_dataset, val_dataset, test_dataset = random_split(dataset, 
+                                                                    [int(cfgs['train_split']*len(dataset)), 
+                                                                     int((1-cfgs['train_split']-cfgs['test_split'])*len(dataset)),
+                                                                     int(cfgs['test_split']*len(dataset))],
+                                                                    generator=torch.Generator.manual_seed(args.seed))
 
             train_weights = make_weights_for_balanced_classes(train_dataset)
 
@@ -121,8 +124,6 @@ def get_dataloader(cfgs, args):
         loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))        
 
 
-
-
     else:
         # Single test_dom case
         train_datasets = []
@@ -135,10 +136,9 @@ def get_dataloader(cfgs, args):
                 test_datasets.append(dataset)
 
             else:
-                idx = np.arange(len(dataset))
-                np.random.shuffle(idx)
-                train_dataset = Subset(dataset, idx[:int(cfgs['train_split']*len(dataset))])
-                val_dataset = Subset(dataset, idx[int(cfgs['train_split']*len(dataset)):])
+                train_dataset, val_dataset = random_split(dataset, 
+                                                            [int(cfgs['train_split']*len(dataset)), int((1-cfgs['train_split'])*len(dataset))],
+                                                            generator=torch.Generator.manual_seed(args.seed))
 
                 train_weights = make_weights_for_balanced_classes(train_dataset)
 

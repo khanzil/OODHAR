@@ -1,7 +1,5 @@
-from tqdm import tqdm
 from utils.cmd_parser import get_agrs_parser
 from initialize import init_train, init_algo
-import json
 import os
 
 def main():

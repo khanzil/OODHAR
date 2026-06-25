@@ -1,19 +1,36 @@
 import os
-import shutil
 from ruamel.yaml import YAML
 import torch
 import numpy as np
-from utils.init_utils import get_algo, get_dataloader
+from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
 
 def init_train(cfgs, args):
     '''
         set device and seed
     '''
+    cfgs['train_id'] = f'seed{args.seed}_search{args.search}_{args.algo}_{args.featurizer}'
+    cfgs['algorithm'] = args.algo
+    cfgs['featurizer'] = args.featurizer
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-    if args.cuda:
-        torch.cuda.manual_seed_all(args.seed)
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    if args.search >= 0:
+        args.search = get_random_seed(args.seed,
+                                      args.search,
+                                      args.algo,
+                                      args.featurizer)
+    
+        if args.cuda:
+            torch.cuda.manual_seed_all(args.search)
+        torch.manual_seed(args.search)
+        np.random.seed(args.search)
+
+        get_random_search_configs(cfgs)
+
+    else:
+        if args.cuda:
+            torch.cuda.manual_seed_all(args.search)
+        torch.manual_seed(args.search)
+        np.random.seed(args.search)
+
 
     '''
         create directories
@@ -47,7 +64,3 @@ def init_train(cfgs, args):
 
 def init_algo(cfgs, args):
     return get_algo(cfgs, args)
-
-
-
-
