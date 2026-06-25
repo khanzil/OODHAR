@@ -8,15 +8,15 @@ def init_train(cfgs, args):
     '''
         set device and seed
     '''
-    cfgs['train_id'] = f'seed{args.seed}_search{args.search}_{cfgs.algorithm}_{cfgs.featurizer}'
-    cfgs['algorithm'] = cfgs.algorithm
-    cfgs['featurizer'] = cfgs.featurizer
+    cfgs['train_id'] = f'seed{args.seed}_search{args.search}_{cfgs['algorithm']}_{cfgs['featurizer']}'
+    cfgs['algorithm'] = cfgs['algorithm']
+    cfgs['featurizer'] = cfgs['featurizer']
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.search >= 0:
         args.search = get_random_seed(args.seed,
                                       args.search,
-                                      cfgs.algorithm,
-                                      cfgs.featurizer)
+                                      cfgs['algorithm'],
+                                      cfgs['featurizer'])
     
         if args.cuda:
             torch.cuda.manual_seed_all(args.search)
