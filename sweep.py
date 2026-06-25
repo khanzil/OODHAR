@@ -24,7 +24,7 @@ if __name__ == '__main__':
     
     for seed in range(args.n_trials):
         # only support single test domain for now, this seed controls RNG for dataset divison
-        for search in range(args.n_searchs):
+        for search in range(1,args.n_searchs+1):
             cfg_yaml_list.append((f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml",seed,search))
             # create config_{i}.yaml for each cfg
             cfgs['train_id'] = f"seed{seed}_search{search}_{args.algo}_{args.featurizer}"
