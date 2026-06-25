@@ -3,7 +3,7 @@ from ruamel.yaml import YAML
 import torch
 import numpy as np
 import sys
-from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed, replace_indent
+from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
 
 def init_train(cfgs, args):
     '''
