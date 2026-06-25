@@ -33,7 +33,7 @@ def get_dataloader(cfgs, args):
     dataset_num_workers = -1
     generator = torch.Generator()
     generator.manual_seed(args.seed)
-    
+
     if cfgs['test_dom'] == 'None':
         # This code is using train-valication domain split and sweep through all test domain combination
         for i_test_dom, test_dom in enumerate(dom_list):
@@ -50,7 +50,8 @@ def get_dataloader(cfgs, args):
 
                 else:
                     train_dataset, val_dataset = random_split(dataset, 
-                                                              [int(cfgs['train_split']*len(dataset)), int((1-cfgs['train_split'])*len(dataset))],
+                                                              [int(cfgs['train_split']*len(dataset)), 
+                                                               len(dataset)-int(cfgs['train_split']*len(dataset))],
                                                               generator=generator)
 
                     train_weights = make_weights_for_balanced_classes(train_dataset)
@@ -92,7 +93,7 @@ def get_dataloader(cfgs, args):
 
             train_dataset, val_dataset, test_dataset = random_split(dataset, 
                                                                     [int(cfgs['train_split']*len(dataset)), 
-                                                                     int((1-cfgs['train_split']-cfgs['test_split'])*len(dataset)),
+                                                                     len(dataset)-int(cfgs['train_split']*len(dataset))-int(cfgs['test_split']*len(dataset)),
                                                                      int(cfgs['test_split']*len(dataset))],
                                                                     generator=generator)
 
@@ -139,7 +140,8 @@ def get_dataloader(cfgs, args):
 
             else:
                 train_dataset, val_dataset = random_split(dataset, 
-                                                            [int(cfgs['train_split']*len(dataset)), int((1-cfgs['train_split'])*len(dataset))],
+                                                            [int(cfgs['train_split']*len(dataset)), 
+                                                             len(dataset)-int(cfgs['train_split'])*len(dataset)],
                                                             generator=generator)
 
                 train_weights = make_weights_for_balanced_classes(train_dataset)
