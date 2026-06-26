@@ -68,7 +68,7 @@ class Algorithm():
                 tqdm.write("")
 
                 for key in loss_list[-1].keys():
-                    tqdm.write(f"{loss_list[-1][key]:10f}".ljust(15), end="")
+                    tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
                 tqdm.write("")
 
 
