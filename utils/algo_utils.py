@@ -45,15 +45,15 @@ class Algorithm():
             if step % val_freq == 0 or step==total_step-1:
                 for i_loader, loader in enumerate(in_val_loader):
                     _, train_acc = self.validate_step(loader)
-                    loss_list[-1].update({f'train_dom_{i_loader}_acc': train_acc})
+                    loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
                 
                 for i_loader, loader in enumerate(out_val_loader):
                     _, val_acc = self.validate_step(loader)
-                    loss_list[-1].update({f'val_dom_{i_loader}_acc': val_acc})
+                    loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
                 
                 for i_loader, loader in enumerate(in_val_loader):
                     _, test_acc = self.validate_step(loader)
-                    loss_list[-1].update({f'test_acc': test_acc})
+                    loss_list[-1].update({f'te_acc': test_acc})
                     
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
