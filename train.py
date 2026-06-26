@@ -30,7 +30,6 @@ def main():
                                 train_loader=train_loader, 
                                 in_val_loader=in_val_loader, 
                                 out_val_loader=out_val_loader, 
-                                test_loader=test_loader,
                                 results_dir=dom_results_dir,
                                 ckpts_dir=dom_ckpts_dir,
                                 val_freq=cfgs['val_freq'],
