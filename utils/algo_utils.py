@@ -47,12 +47,14 @@ class Algorithm():
                     if loader is None:
                         train_acc = -1.0
                     else:
-                        _, train_acc = self.validate_step(loader)
+                        _, train_acc, loader_len = self.validate_step(loader)
                     loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
+                    tqdm.write(f"{i_loader}_in len {loader_len}")
                 
                 for i_loader, loader in enumerate(out_val_loader):
-                    _, val_acc = self.validate_step(loader)
+                    _, val_acc, loader_len = self.validate_step(loader)
                     loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
+                    tqdm.write(f"{i_loader}_out len {loader_len}")
 
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
@@ -180,7 +182,7 @@ class ERM(Algorithm):
         self.featurizer.train()
         self.classifier.train()
 
-        return pred_list, acc/loader_len
+        return pred_list, acc/loader_len, loader_len
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:

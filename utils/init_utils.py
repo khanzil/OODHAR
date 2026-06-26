@@ -43,7 +43,6 @@ def get_dataloader(cfgs, args):
 
             for fold in dom_list:
                 dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
-                print(fold, len(dataset))
                 if dataset_num_workers == -1:
                     dataset_num_workers = dataset.num_workers
                 if fold == test_dom:
