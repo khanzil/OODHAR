@@ -3,9 +3,8 @@ import numpy as np
 def get_random_search_configs(cfgs):
     # same for every configs
     cfgs['learning_rate'] = 5 * 10**np.random.uniform(-5,-4)
-    cfgs['weight_decay'] = 10**np.random.uniform(-5,-3)
+    cfgs['weight_decay'] = 10**np.random.uniform(-4,-2)
     cfgs['batch_size'] = 2**np.random.randint(3,5)
-
 
     # featurizer-based cfgs
     if cfgs['featurizer'] == 'MLP':
