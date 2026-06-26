@@ -43,16 +43,22 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                _, train_acc = self.validate_step(in_val_loader)
-                _, val_acc = self.validate_step(out_val_loader)
-                _, test_acc = self.validate_step(test_loader)
+                for i_loader, loader in enumerate(in_val_loader):
+                    _, train_acc = self.validate_step(loader)
+                    loss_list[-1].update({f'train_dom_{i_loader}_acc': train_acc})
+                
+                for i_loader, loader in enumerate(out_val_loader):
+                    _, val_acc = self.validate_step(loader)
+                    loss_list[-1].update({f'val_dom_{i_loader}_acc': val_acc})
+                
+                for i_loader, loader in enumerate(in_val_loader):
+                    _, test_acc = self.validate_step(loader)
+                    loss_list[-1].update({f'test_acc': test_acc})
+                    
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
-                loss_list[-1].update({'train_acc': train_acc,
-                                    'val_acc': val_acc,
-                                    'test_acc': test_acc,
-                                    'step': float(step),
-                                    'mem_gb': mem_gb})
+                loss_list[-1].update({'step': float(step),
+                                      'mem_gb': mem_gb})
                 
                 '''
                     Print and save validation results at every val step
@@ -62,7 +68,7 @@ class Algorithm():
                 tqdm.write("")
 
                 for key in loss_list[-1].keys():
-                    tqdm.write(f"{loss_list[-1][key]:.10f}".ljust(15), end="")
+                    tqdm.write(f"{loss_list[-1][key]:10f}".ljust(15), end="")
                 tqdm.write("")
 
 

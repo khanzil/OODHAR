@@ -45,7 +45,7 @@ def get_dataloader(cfgs, args):
                 dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
                 if dataset_num_workers == -1:
                     dataset_num_workers = dataset.num_workers
-                if fold[0] in test_dom:
+                if fold == test_dom:
                     test_datasets.append(dataset)
 
                 else:
@@ -69,16 +69,21 @@ def get_dataloader(cfgs, args):
             train_loaders = zip(*train_loaders)
 
 
-            in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
-                                        batch_size=total_batch_size,
-                                        num_workers=args.num_workers)
-            out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
-                                    batch_size=total_batch_size,
-                                    num_workers=args.num_workers)
-            test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
-                                    batch_size=total_batch_size,
-                                    num_workers=args.num_workers,
-                                    shuffle=False)
+            in_val_loaders = [DataLoader(dataset=dataset,
+                                         batch_size=total_batch_size,
+                                         num_workers=args.num_workers,
+                                         shuffle=False)
+                              for dataset, _ in train_datasets]
+            out_val_loaders = [DataLoader(dataset=dataset,
+                                         batch_size=total_batch_size,
+                                         num_workers=args.num_workers,
+                                         shuffle=False)
+                               for dataset in val_datasets]
+            test_loaders = [DataLoader(dataset=dataset,
+                                       batch_size=total_batch_size,
+                                       num_workers=args.num_workers,
+                                       shuffle=False)
+                            for dataset in test_datasets]
 
             loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
 
@@ -112,17 +117,21 @@ def get_dataloader(cfgs, args):
                         for dataset, weights in train_datasets]
         train_loaders = zip(*train_loaders)
 
-        in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
-                                    batch_size=total_batch_size,
-                                    num_workers=args.num_workers)
-        out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
-                                 batch_size=total_batch_size,
-                                 num_workers=args.num_workers)
-
-        test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
-                                  batch_size=total_batch_size,
-                                  num_workers=args.num_workers,
-                                  shuffle=False)
+        in_val_loaders = [DataLoader(dataset=dataset,
+                                     batch_size=total_batch_size,
+                                     num_workers=args.num_workers,
+                                     shuffle=False)
+                          for dataset, _ in train_datasets]
+        out_val_loaders = [DataLoader(dataset=dataset,
+                                     batch_size=total_batch_size,
+                                     num_workers=args.num_workers,
+                                     shuffle=False)
+                           for dataset in val_datasets]
+        test_loaders = [DataLoader(dataset=dataset,
+                                   batch_size=total_batch_size,
+                                   num_workers=args.num_workers,
+                                   shuffle=False)
+                        for dataset in test_datasets]
 
         loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))        
 
@@ -158,17 +167,21 @@ def get_dataloader(cfgs, args):
                         for dataset, weights in train_datasets]
         train_loaders = zip(*train_loaders)
 
-        in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
-                                    batch_size=total_batch_size,
-                                    num_workers=args.num_workers)
-        out_val_loaders = DataLoader(dataset=ConcatDataset(val_datasets),
-                                 batch_size=total_batch_size,
-                                 num_workers=args.num_workers)
-
-        test_loaders = DataLoader(dataset=ConcatDataset(test_datasets),
-                                  batch_size=total_batch_size,
-                                  num_workers=args.num_workers,
-                                  shuffle=False)
+        in_val_loaders = [DataLoader(dataset=dataset,
+                                     batch_size=total_batch_size,
+                                     num_workers=args.num_workers,
+                                     shuffle=False)
+                          for dataset, _ in train_datasets]
+        out_val_loaders = [DataLoader(dataset=dataset,
+                                      batch_size=total_batch_size,
+                                      num_workers=args.num_workers,
+                                      shuffle=False)
+                           for dataset in val_datasets]
+        test_loaders = [DataLoader(dataset=dataset,
+                                   batch_size=total_batch_size,
+                                   num_workers=args.num_workers,
+                                   shuffle=False)
+                        for dataset in test_datasets]
 
         loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
 
