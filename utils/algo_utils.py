@@ -46,6 +46,7 @@ class Algorithm():
                 for i_loader, loader in enumerate(in_val_loader):
                     if loader is None:
                         train_acc = -1.0
+                        loader_len = 0
                     else:
                         _, train_acc, loader_len = self.validate_step(loader)
                     loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
