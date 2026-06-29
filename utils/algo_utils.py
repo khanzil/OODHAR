@@ -57,13 +57,15 @@ class Algorithm():
                     loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc/tr_len})
 
+                _, te_acc, _ = self.validate_step(out_val_loader[i_test_loader])
+                loss_list[-1].update({f'te_dom{i_loader}_acc': te_acc})
 
                 val_avg_acc = 0.0
                 val_len = 0.0
                 for i_loader, loader in enumerate(out_val_loader):
                     _, val_acc, loader_len = self.validate_step(loader)
                     if i_loader == i_test_loader:
-                        loss_list[-1].update({f'te_dom{i_loader}_acc': val_acc})
+                        continue
                     else:
                         val_avg_acc += val_acc*loader_len
                         val_len += loader_len
