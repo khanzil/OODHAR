@@ -43,19 +43,34 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
+                tr_avg_acc = 0.0
+                tr_len = 0.0
                 for i_loader, loader in enumerate(in_val_loader):
                     if loader is None:
-                        train_acc = -1.0
-                        loader_len = 0
+                        i_test_loader = i_loader
+                        continue
                     else:
                         _, train_acc, loader_len = self.validate_step(loader)
+                        tr_avg_acc += train_acc
+                        tr_len += loader_len
+
                     loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
-                    tqdm.write(f"{i_loader}_in len {loader_len}")
-                
+                loss_list[-1].update({f'tr_avg_acc': tr_avg_acc/tr_len})
+
+
+                val_avg_acc = 0.0
+                val_len = 0.0
                 for i_loader, loader in enumerate(out_val_loader):
                     _, val_acc, loader_len = self.validate_step(loader)
-                    loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
-                    tqdm.write(f"{i_loader}_out len {loader_len}")
+                    if i_loader == i_test_loader:
+                        loss_list[-1].update({f'te_dom{i_loader}_acc': val_acc})
+                    else:
+                        val_avg_acc += val_avg_acc
+                        val_len += loader_len
+                        loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
+                    
+                loss_list[-1].update({f'val_avg_acc': val_avg_acc/val_len})
+                
 
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
@@ -78,7 +93,7 @@ class Algorithm():
             '''
                 Save the checkpoints
             '''
-            if step+1 % ckpt_freq == 0 or step==total_step-1: 
+            if step+1 % ckpt_freq == 0 or step==total_step-1:
                 self.save_ckpt(step, ckpts_dir)
             
         output_file = open(os.path.join(results_dir, 'loss_list.json'), 'a', encoding='utf-8')
@@ -96,13 +111,7 @@ class Algorithm():
 
     def validate_step(self, loader):
         '''
-            loader: dataloader for validation
-            trainval: 'train' or 'val'
-
-            Perform validation over the entire loader, the results are stored in self.loss_dict[trainval].
-            Note that in this function, acc is calculated by getting the number of correct predictions then divided by loader_len.
-
-            In case validating on training set, train_loss will not be recalculated.
+            Perform validation over the entire loader.
         '''
         raise NotImplementedError
 

@@ -28,7 +28,7 @@ def get_algo(cfgs, args):
 
 def get_dataloader(cfgs, args):
     dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset']) # directory contains all data folders
-    dom_list = [fold for fold in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir,fold))]
+    dom_list = [fold for fold in sorted(os.listdir(dataset_dir)) if os.path.isdir(os.path.join(dataset_dir,fold))]
     loaders = []
     dataset_num_workers = -1
     generator = torch.Generator()
