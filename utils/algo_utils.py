@@ -51,7 +51,7 @@ class Algorithm():
                         continue
                     else:
                         _, train_acc, loader_len = self.validate_step(loader)
-                        tr_avg_acc += train_acc
+                        tr_avg_acc += train_acc*loader_len
                         tr_len += loader_len
 
                     loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
@@ -65,7 +65,7 @@ class Algorithm():
                     if i_loader == i_test_loader:
                         loss_list[-1].update({f'te_dom{i_loader}_acc': val_acc})
                     else:
-                        val_avg_acc += val_avg_acc
+                        val_avg_acc += val_acc*loader_len
                         val_len += loader_len
                         loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
                     
