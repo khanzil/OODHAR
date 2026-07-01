@@ -29,6 +29,7 @@ def init_loader(cfgs, args):
         torch.manual_seed(args.search)
         np.random.seed(args.search)
 
+    print(f"\nRNG state seed: {args.search}\n")
 
     '''
         create directories
@@ -37,7 +38,7 @@ def init_loader(cfgs, args):
     ckpts_dir = os.path.join('./ckpts', cfgs['dataset'], cfgs['train_id'])
     if cfgs['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
-            raise ValueError(f"{results_dir} Already existed!")
+            raise ValueError(f"{results_dir} Already exist!")
 
         os.makedirs(results_dir)
         os.makedirs(ckpts_dir)
