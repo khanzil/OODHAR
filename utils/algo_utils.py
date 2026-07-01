@@ -7,6 +7,7 @@ import os
 from tqdm import tqdm
 from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
 import json
+import time
 
 
 class Algorithm():
@@ -42,25 +43,30 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
+                start = time.time()
                 _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
+                tqdm.write(time.time() - start)
                 for i_dom, acc in enumerate(tr_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
+                tqdm.write(time.time() - start)
 
                 _, _, te_acc = self.validate_step(test_loader)
+                tqdm.write(time.time() - start)
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
+                tqdm.write(time.time() - start)
 
                 _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
+                tqdm.write(time.time() - start)
                 for i_dom, acc in enumerate(val_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
-                
-
-
+                tqdm.write(time.time() - start)
+                                
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
                 loss_list[-1].update({'step': float(step),
@@ -69,13 +75,13 @@ class Algorithm():
                 '''
                     Print and save validation results at every val step
                 '''
-                # for key in loss_list[-1].keys():
-                #     tqdm.write(f"{key}".ljust(15), end = "")
-                # tqdm.write("")
+                for key in loss_list[-1].keys():
+                    tqdm.write(f"{key}".ljust(15), end = "")
+                tqdm.write("")
 
-                # for key in loss_list[-1].keys():
-                #     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
-                # tqdm.write("\n\n")
+                for key in loss_list[-1].keys():
+                    tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
+                tqdm.write("\n\n")
 
 
             '''
@@ -183,8 +189,6 @@ class ERM(Algorithm):
                 loader_len += torch.bincount(all_d, minlength=self.n_domains)
                 # pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                # acc += num_corrects.cpu().numpy()
-                # loader_len += all_x.shape[0]
         
         self.featurizer.train()
         self.classifier.train()
