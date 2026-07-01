@@ -178,6 +178,7 @@ class ERM(Algorithm):
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
                 tqdm.write(str(corrects))
+                tqdm.write(str(pred))
                 tqdm.write(str(all_y))
                 
                 acc += torch.bincount(all_d.long(), corrects, minlength=self.n_domains)
