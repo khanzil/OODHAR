@@ -4,7 +4,7 @@ def get_random_search_configs(cfgs):
     # same for every configs
     cfgs['learning_rate'] = 5 * 10**np.random.uniform(-5,-4)
     cfgs['weight_decay'] = 10**np.random.uniform(-4,-2)
-    cfgs['batch_size'] = np.random.choice([16, 32]) # because trainer using fixed batch-steps instead of fixed epoch, random batch_size may cause unfair comparisons
+    cfgs['batch_size'] = int(np.random.choice([16, 32])) # because trainer using fixed batch-steps instead of fixed epoch, random batch_size may cause unfair comparisons
 
     # featurizer-based cfgs
     if cfgs['featurizer'] == 'MLP':
