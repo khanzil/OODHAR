@@ -56,7 +56,7 @@ class Algorithm():
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 
-                _, te_acc, _ = self.validate_step(test_loader)
+                _, _, te_acc = self.validate_step(test_loader)
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
 
 
@@ -177,7 +177,7 @@ class ERM(Algorithm):
                 _, pred = pred.max(1) # same as np.argmax()
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
-                acc += torch.bincount(corrects, all_d.long(),minlength=self.n_domains)
+                acc += torch.bincount(all_d.long(), corrects, minlength=self.n_domains)
                 loader_len += torch.bincount(all_d, minlength=self.n_domains)
                 # pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
@@ -188,6 +188,8 @@ class ERM(Algorithm):
         self.classifier.train()
         
         avg_acc = sum(acc) / sum(loader_len)
+        tqdm.write(acc)
+        tqdm.write(loader_len)
         
         loader_len[loader_len == 0] += 1
         acc /= loader_len
