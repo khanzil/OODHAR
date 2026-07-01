@@ -177,6 +177,9 @@ class ERM(Algorithm):
                 _, pred = pred.max(1) # same as np.argmax()
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                tqdm.write(str(corrects))
+                tqdm.write(str(all_y))
+                
                 acc += torch.bincount(all_d.long(), corrects, minlength=self.n_domains)
                 loader_len += torch.bincount(all_d, minlength=self.n_domains)
                 # pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
@@ -188,6 +191,7 @@ class ERM(Algorithm):
         self.classifier.train()
         
         avg_acc = sum(acc) / sum(loader_len)
+
         tqdm.write(str(acc.cpu().numpy()))
         tqdm.write(str(loader_len.cpu().numpy()))
         
