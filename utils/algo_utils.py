@@ -43,29 +43,22 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                start = time.time()
                 _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
-                tqdm.write(str(time.time() - start))
                 for i_dom, acc in enumerate(tr_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
-                tqdm.write(str(time.time() - start))
 
                 _, _, te_acc = self.validate_step(test_loader)
-                tqdm.write(str(time.time() - start))
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
-                tqdm.write(str(time.time() - start))
 
                 _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
-                tqdm.write(str(time.time() - start))
                 for i_dom, acc in enumerate(val_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
-                tqdm.write(str(time.time() - start))
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 

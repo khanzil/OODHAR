@@ -59,7 +59,8 @@ def get_dataloader(cfgs, args):
 
                     val_datasets.append(val_dataset)
 
-            total_batch_size = len(train_datasets)*cfgs['batch_size']
+            val_batch_size = len(train_datasets)*cfgs['batch_size']
+            val_batch_size = 128
 
             
             train_loader = [InfiniteDataLoader(dataset=dataset,
@@ -70,17 +71,17 @@ def get_dataloader(cfgs, args):
             train_loader = zip(*train_loader)
 
             in_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
-                                        batch_size=total_batch_size,
+                                        batch_size=val_batch_size,
                                         num_workers=args.num_workers,
                                         shuffle=False)
 
             out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
-                                         batch_size=total_batch_size,
+                                         batch_size=val_batch_size,
                                          num_workers=args.num_workers,
                                          shuffle=False)
             
             test_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in test_datasets]),
-                                         batch_size=total_batch_size,
+                                         batch_size=val_batch_size,
                                          num_workers=args.num_workers,
                                          shuffle=False)
 
@@ -107,7 +108,7 @@ def get_dataloader(cfgs, args):
             val_datasets.append(val_dataset)
             test_datasets.append(test_dataset)
 
-        total_batch_size = len(train_datasets)*cfgs['batch_size']
+        val_batch_size = len(train_datasets)*cfgs['batch_size']
 
         train_loaders = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
@@ -117,17 +118,17 @@ def get_dataloader(cfgs, args):
         train_loaders = zip(*train_loaders)
 
         in_val_loaders = [DataLoader(dataset=dataset,
-                                     batch_size=total_batch_size,
+                                     batch_size=val_batch_size,
                                      num_workers=args.num_workers,
                                      shuffle=False)
                           for dataset, _ in train_datasets]
         out_val_loaders = [DataLoader(dataset=dataset,
-                                     batch_size=total_batch_size,
+                                     batch_size=val_batch_size,
                                      num_workers=args.num_workers,
                                      shuffle=False)
                            for dataset in val_datasets]
         test_loaders = [DataLoader(dataset=dataset,
-                                   batch_size=total_batch_size,
+                                   batch_size=val_batch_size,
                                    num_workers=args.num_workers,
                                    shuffle=False)
                         for dataset in test_datasets]
@@ -157,7 +158,7 @@ def get_dataloader(cfgs, args):
                 train_datasets.append((train_dataset, train_weights))
                 val_datasets.append(val_dataset)
 
-        total_batch_size = len(train_datasets)*cfgs['batch_size']
+        val_batch_size = len(train_datasets)*cfgs['batch_size']
 
         train_loaders = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
@@ -167,17 +168,17 @@ def get_dataloader(cfgs, args):
         train_loaders = zip(*train_loaders)
 
         in_val_loaders = [DataLoader(dataset=dataset,
-                                     batch_size=total_batch_size,
+                                     batch_size=val_batch_size,
                                      num_workers=args.num_workers,
                                      shuffle=False)
                           for dataset, _ in train_datasets]
         out_val_loaders = [DataLoader(dataset=dataset,
-                                      batch_size=total_batch_size,
+                                      batch_size=val_batch_size,
                                       num_workers=args.num_workers,
                                       shuffle=False)
                            for dataset in val_datasets]
         test_loaders = [DataLoader(dataset=dataset,
-                                   batch_size=total_batch_size,
+                                   batch_size=val_batch_size,
                                    num_workers=args.num_workers,
                                    shuffle=False)
                         for dataset in test_datasets]
