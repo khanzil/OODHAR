@@ -168,6 +168,7 @@ class ERM(Algorithm):
         for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
             all_x = all_x.to(device, non_blocking=True)
             all_y = all_y.to(device, non_blocking=True)
+            all_d = all_d.to(device, non_blocking=True)
             acc = acc.to(device, non_blocking=True)
             loader_len = loader_len.to(device, non_blocking=True)
 
