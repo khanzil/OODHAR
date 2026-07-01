@@ -194,7 +194,7 @@ class ERM(Algorithm):
         loader_len[loader_len == 0] += 1
         acc /= loader_len
 
-        return pred_list, list(acc.cpu().numpy()), avg_acc.cpu().numpy().item()
+        return pred_list, acc.cpu().numpy().tolist() , avg_acc.cpu().numpy().item()
 
 
 
