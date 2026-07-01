@@ -7,7 +7,6 @@ import os
 from tqdm import tqdm
 from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
 import json
-import copy
 
 
 class Algorithm():
@@ -83,13 +82,13 @@ class Algorithm():
                 '''
                     Print and save validation results at every val step
                 '''
-                for key in loss_list[-1].keys():
-                    tqdm.write(f"{key}".ljust(15), end = "")
-                tqdm.write("")
+                # for key in loss_list[-1].keys():
+                #     tqdm.write(f"{key}".ljust(15), end = "")
+                # tqdm.write("")
 
-                for key in loss_list[-1].keys():
-                    tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
-                tqdm.write("\n\n")
+                # for key in loss_list[-1].keys():
+                #     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
+                # tqdm.write("\n\n")
 
 
             '''
@@ -188,7 +187,7 @@ class ERM(Algorithm):
                 num_corrects = torch.eq(pred, all_y).sum()
                 pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()      
+                acc += num_corrects.cpu().numpy()
                 loader_len += all_x.shape[0]
 
         self.featurizer.train()
