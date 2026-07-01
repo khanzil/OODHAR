@@ -188,8 +188,8 @@ class ERM(Algorithm):
         self.classifier.train()
         
         avg_acc = sum(acc) / sum(loader_len)
-        tqdm.write(acc)
-        tqdm.write(loader_len)
+        tqdm.write(acc.cpu().numpy())
+        tqdm.write(loader_len.cpu().numpy())
         
         loader_len[loader_len == 0] += 1
         acc /= loader_len
