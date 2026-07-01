@@ -41,13 +41,12 @@ def get_dataloader(cfgs, args):
             val_datasets = []
             test_datasets = []
 
-
             for fold in dom_list:
                 dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
                 if dataset_num_workers == -1:
                     dataset_num_workers = dataset.num_workers
                 if fold == test_dom:
-                    val_dataset = dataset
+                    test_datasets.append(dataset)
 
                 else:
                     train_dataset, val_dataset = random_split(dataset, 
@@ -58,30 +57,34 @@ def get_dataloader(cfgs, args):
                     train_weights = make_weights_for_balanced_classes(train_dataset)
                     train_datasets.append((train_dataset, train_weights))
 
-                val_datasets.append(val_dataset)
+                    val_datasets.append(val_dataset)
 
             total_batch_size = len(train_datasets)*cfgs['batch_size']
 
             
-            train_loaders = [InfiniteDataLoader(dataset=dataset,
+            train_loader = [InfiniteDataLoader(dataset=dataset,
                                                 weights=weights,
                                                 batch_size=cfgs['batch_size'],
                                                 num_workers=dataset_num_workers)
                              for dataset, weights in train_datasets]
-            train_loaders = zip(*train_loaders)
+            train_loader = zip(*train_loader)
 
-            in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+            in_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
                                         batch_size=total_batch_size,
                                         num_workers=args.num_workers,
                                         shuffle=False)
 
-            out_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
+            out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
                                          batch_size=total_batch_size,
                                          num_workers=args.num_workers,
                                          shuffle=False)
-                               
+            
+            test_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in test_datasets]),
+                                         batch_size=total_batch_size,
+                                         num_workers=args.num_workers,
+                                         shuffle=False)
 
-            loaders.append((train_loaders, in_val_loaders, out_val_loaders))
+            loaders.append((train_loader, in_val_loader, out_val_loader, test_loader))
 
 
     elif cfgs['test_dom'] == "IID":

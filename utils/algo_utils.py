@@ -22,7 +22,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, val_freq, ckpt_freq, i_test_dom, results_dir=None, ckpts_dir=None, cur_step=0):
+    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, test_loader, val_freq, ckpt_freq, i_test_dom, results_dir=None, ckpts_dir=None, cur_step=0):
         '''
             Trainer function that performs training over num_steps steps.
         '''
@@ -52,10 +52,13 @@ class Algorithm():
                 _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader, i_test_dom)
                 for i_dom, acc in enumerate(val_all_acc):
                     if i_dom == i_test_dom:
-                        loss_list[-1].update({f'te_dom{i_test_dom}_acc': acc})
+                        continue
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 
+                _, te_acc, _ = self.validate_step(test_loader, i_test_dom)
+                loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
+
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
@@ -153,7 +156,7 @@ class ERM(Algorithm):
     def predict(self, x):
         return self.network(x)
 
-    def validate_step(self, loader, i_test_dom=None):
+    def validate_step(self, loader):
         self.featurizer.eval()
         self.classifier.eval()
         acc = torch.ones(self.n_domains) * -1
@@ -182,9 +185,8 @@ class ERM(Algorithm):
         
         self.featurizer.train()
         self.classifier.train()
-
-        avg_acc = sum(torch.cat([acc[:i_test_dom], acc[i_test_dom+1:]])) \
-                  / sum(torch.cat([loader_len[:i_test_dom], loader_len[i_test_dom+1:]]))
+        
+        avg_acc = sum(acc) / sum(loader_len)
         
         loader_len[loader_len == 0] += 1
         acc /= loader_len
