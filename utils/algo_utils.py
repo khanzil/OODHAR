@@ -42,21 +42,21 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader, i_test_dom)
+                _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
                 for i_dom, acc in enumerate(tr_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
 
-                _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader, i_test_dom)
+                _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
                 for i_dom, acc in enumerate(val_all_acc):
                     if i_dom == i_test_dom:
                         continue
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 
-                _, te_acc, _ = self.validate_step(test_loader, i_test_dom)
+                _, te_acc, _ = self.validate_step(test_loader)
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
 
 
@@ -157,15 +157,15 @@ class ERM(Algorithm):
         return self.network(x)
 
     def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        acc = torch.ones(self.n_domains) * -1
+        acc = torch.zeros(self.n_domains)
         loader_len = torch.zeros(self.n_domains)
 
         pred_list = []
 
         for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
-            device = 'cuda' if self.cuda else 'cpu'
             all_x = all_x.to(device, non_blocking=True)
             all_y = all_y.to(device, non_blocking=True)
             acc = acc.to(device, non_blocking=True)
