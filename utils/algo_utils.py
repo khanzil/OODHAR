@@ -22,7 +22,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, val_freq, ckpt_freq, results_dir=None, ckpts_dir=None, cur_step=0):
+    def train(self, num_steps, train_loader, in_val_loader, out_val_loader, val_freq, ckpt_freq, i_test_dom, results_dir=None, ckpts_dir=None, cur_step=0):
         '''
             Trainer function that performs training over num_steps steps.
         '''
@@ -42,37 +42,20 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                tr_avg_acc = 0.0
-                tr_len = 0.0
-                for i_loader, loader in enumerate(in_val_loader):
-                    if loader is None:
-                        i_test_loader = i_loader
+                _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader, i_test_dom)
+                for i_dom, acc in enumerate(tr_all_acc):
+                    if i_dom == i_test_dom:
                         continue
-                    else:
-                        _, train_acc, loader_len = self.validate_step(loader)
-                        tr_avg_acc += train_acc*loader_len
-                        tr_len += loader_len
+                    loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
+                loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
 
-                    loss_list[-1].update({f'tr_dom{i_loader}_acc': train_acc})
-                loss_list[-1].update({f'tr_avg_acc': tr_avg_acc/tr_len})
-
-                _, te_acc, _ = self.validate_step(out_val_loader[i_test_loader])
-                loss_list[-1].update({f'te_dom{i_test_loader}_acc': te_acc})
-
-                val_avg_acc = 0.0
-                val_len = 0.0
-                for i_loader, loader in enumerate(out_val_loader):
-                    _, val_acc, loader_len = self.validate_step(loader)
-                    if i_loader == i_test_loader:
-                        continue
-                    else:
-                        val_avg_acc += val_acc*loader_len
-                        val_len += loader_len
-                        loss_list[-1].update({f'val_dom{i_loader}_acc': val_acc})
-                    
-                loss_list[-1].update({f'val_avg_acc': val_avg_acc/val_len})
+                _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader, i_test_dom)
+                for i_dom, acc in enumerate(val_all_acc):
+                    if i_dom == i_test_dom:
+                        loss_list[-1].update({f'te_dom{i_test_dom}_acc': acc})
+                    loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
+                loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 
-
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
@@ -82,13 +65,13 @@ class Algorithm():
                 '''
                     Print and save validation results at every val step
                 '''
-                # for key in loss_list[-1].keys():
-                #     tqdm.write(f"{key}".ljust(15), end = "")
-                # tqdm.write("")
+                for key in loss_list[-1].keys():
+                    tqdm.write(f"{key}".ljust(15), end = "")
+                tqdm.write("")
 
-                # for key in loss_list[-1].keys():
-                #     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
-                # tqdm.write("\n\n")
+                for key in loss_list[-1].keys():
+                    tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
+                tqdm.write("\n\n")
 
 
             '''
@@ -110,7 +93,7 @@ class Algorithm():
         '''
         raise NotImplementedError
 
-    def validate_step(self, loader):
+    def validate_step(self, loader, test_dom=None):
         '''
             Perform validation over the entire loader.
         '''
@@ -131,6 +114,8 @@ class ERM(Algorithm):
             cfgs['num_classes'],
             cfgs['nonlinear_classifier']
         )
+
+        self.n_domains = cfgs['num_domains']
 
         self.network = nn.Sequential(self.featurizer, self.classifier)
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
@@ -168,11 +153,11 @@ class ERM(Algorithm):
     def predict(self, x):
         return self.network(x)
 
-    def validate_step(self, loader):
+    def validate_step(self, loader, i_test_dom=None):
         self.featurizer.eval()
         self.classifier.eval()
-        acc = 0.0
-        loader_len = 0.0
+        acc = torch.ones(self.n_domains) * -1
+        loader_len = torch.zeros(self.n_domains)
 
         pred_list = []
 
@@ -180,20 +165,34 @@ class ERM(Algorithm):
             device = 'cuda' if self.cuda else 'cpu'
             all_x = all_x.to(device, non_blocking=True)
             all_y = all_y.to(device, non_blocking=True)
+            acc = acc.to(device, non_blocking=True)
+            loader_len = loader_len.to(device, non_blocking=True)
 
             with torch.no_grad():
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                num_corrects = torch.eq(pred, all_y).sum()
-                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(corrects, all_d.long(),minlength=self.n_domains)
+                loader_len += torch.bincount(all_d, minlength=self.n_domains)
+                # pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()
-                loader_len += all_x.shape[0]
-
+                # acc += num_corrects.cpu().numpy()
+                # loader_len += all_x.shape[0]
+        
         self.featurizer.train()
         self.classifier.train()
 
-        return pred_list, acc/loader_len, loader_len
+        avg_acc = sum(torch.cat([acc[:i_test_dom], acc[i_test_dom+1:]])) \
+                  / sum(torch.cat([loader_len[:i_test_dom], loader_len[i_test_dom+1:]]))
+        
+        loader_len[loader_len == 0] += 1
+        acc /= loader_len
+
+        return pred_list, acc.cpu().numpy(), avg_acc.cpu().numpy()
+
+
+
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
@@ -304,7 +303,7 @@ class DANN(Algorithm):
     def predict(self, x):
         return self.classifier(self.featurizer(x))
 
-    def validate_step(self, loader):
+    def validate_step(self, loader, test_dom=None):
         self.featurizer.eval()
         self.classifier.eval()
         pred_list = []

@@ -27,7 +27,8 @@ def main():
                                    results_dir=dom_results_dir,
                                    ckpts_dir=dom_ckpts_dir,
                                    val_freq=cfgs['val_freq'],
-                                   ckpt_freq=cfgs['ckpt_freq'])
+                                   ckpt_freq=cfgs['ckpt_freq'],
+                                   test_dom=i_loader)
 
 if __name__ == '__main__':
     main()

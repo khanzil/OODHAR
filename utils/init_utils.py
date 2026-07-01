@@ -46,8 +46,6 @@ def get_dataloader(cfgs, args):
                 if dataset_num_workers == -1:
                     dataset_num_workers = dataset.num_workers
                 if fold == test_dom:
-                    train_dataset = None
-                    train_weights = 0
                     val_dataset = dataset
 
                 else:
@@ -57,37 +55,35 @@ def get_dataloader(cfgs, args):
                                                               generator=generator)
 
                     train_weights = make_weights_for_balanced_classes(train_dataset)
+                    train_datasets.append((train_dataset, train_weights))
 
-                train_datasets.append((train_dataset, train_weights))
                 val_datasets.append(val_dataset)
 
             total_batch_size = len(train_datasets)*cfgs['batch_size']
 
-            train_loaders = []
-            in_val_loaders = []
-            for dataset, weights in train_datasets:
-                if dataset is not None:
-                    train_loaders.append(InfiniteDataLoader(dataset=dataset,
-                                                            weights=weights,
-                                                            batch_size=cfgs['batch_size'],
-                                                            num_workers=dataset_num_workers))
-                    in_val_loaders.append(DataLoader(dataset=dataset,
-                                                     batch_size=total_batch_size,
-                                                     num_workers=args.num_workers,
-                                                     shuffle=False))
-                else:
-                    in_val_loaders.append(None)
 
-
+            in_val_loaders.append(DataLoader(dataset=dataset,
+                                                batch_size=total_batch_size,
+                                                num_workers=args.num_workers,
+                                                shuffle=False))
+            
+            train_loaders = [InfiniteDataLoader(dataset=dataset,
+                                                weights=weights,
+                                                batch_size=cfgs['batch_size'],
+                                                num_workers=dataset_num_workers)
+                             for dataset, weights in train_datasets]
             train_loaders = zip(*train_loaders)
 
+            in_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                        batch_size=total_batch_size,
+                                        num_workers=args.num_workers,
+                                        shuffle=False)
 
-            out_val_loaders = [DataLoader(dataset=dataset,
+            out_val_loaders = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
                                          batch_size=total_batch_size,
                                          num_workers=args.num_workers,
                                          shuffle=False)
-                               for dataset in val_datasets]
-
+                               
 
             loaders.append((train_loaders, in_val_loaders, out_val_loaders))
 
