@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
 
-def init_train(cfgs, args):
+def init_loader(cfgs, args):
     '''
         set device and seed
     '''
@@ -53,13 +53,7 @@ def init_train(cfgs, args):
     '''
     loaders = get_dataloader(cfgs, args)
 
-    '''
-        get algorithm
-    '''
-    algo = get_algo(cfgs, args)
-
-
-    return algo, loaders, results_dir, ckpts_dir
+    return loaders, results_dir, ckpts_dir
 
 def init_algo(cfgs, args):
     return get_algo(cfgs, args)

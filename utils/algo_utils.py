@@ -58,7 +58,7 @@ class Algorithm():
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc/tr_len})
 
                 _, te_acc, _ = self.validate_step(out_val_loader[i_test_loader])
-                loss_list[-1].update({f'te_dom{i_loader}_acc': te_acc})
+                loss_list[-1].update({f'te_dom{i_test_loader}_acc': te_acc})
 
                 val_avg_acc = 0.0
                 val_len = 0.0
@@ -89,7 +89,7 @@ class Algorithm():
 
                 for key in loss_list[-1].keys():
                     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
-                tqdm.write("")
+                tqdm.write("\n\n")
 
 
             '''

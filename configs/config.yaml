@@ -15,7 +15,7 @@ train_split: 0.85
 test_split: 0.1
 
 # train:
-batch_size: 32
+batch_size: 16
 num_steps: 2
 val_freq: 20
 ckpt_freq: 800
@@ -25,14 +25,13 @@ algorithm: IRM
 learning_rate: 5e-06
 weight_decay: 0.1
 loss_type: CrossEntropy
-# DANN
+# algorithms
 DANN:
   lambd: 0.2
   lambd_iter: 500
   loss_type_d: CrossEntropy
   nonlinear_discriminator: true
   # d_steps_per_g_step: 1
-# IRM
 IRM:
   iter: 0
   lambd: 0.2
