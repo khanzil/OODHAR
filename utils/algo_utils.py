@@ -49,6 +49,9 @@ class Algorithm():
                     loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
 
+                _, _, te_acc = self.validate_step(test_loader)
+                loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
+
                 _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
                 for i_dom, acc in enumerate(val_all_acc):
                     if i_dom == i_test_dom:
@@ -56,8 +59,6 @@ class Algorithm():
                     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
                 loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 
-                _, _, te_acc = self.validate_step(test_loader)
-                loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
 
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
@@ -68,13 +69,13 @@ class Algorithm():
                 '''
                     Print and save validation results at every val step
                 '''
-                for key in loss_list[-1].keys():
-                    tqdm.write(f"{key}".ljust(15), end = "")
-                tqdm.write("")
+                # for key in loss_list[-1].keys():
+                #     tqdm.write(f"{key}".ljust(15), end = "")
+                # tqdm.write("")
 
-                for key in loss_list[-1].keys():
-                    tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
-                tqdm.write("\n\n")
+                # for key in loss_list[-1].keys():
+                #     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
+                # tqdm.write("\n\n")
 
 
             '''
