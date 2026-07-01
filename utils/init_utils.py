@@ -41,6 +41,7 @@ def get_dataloader(cfgs, args):
             val_datasets = []
             test_datasets = []
 
+
             for fold in dom_list:
                 dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
                 if dataset_num_workers == -1:
@@ -61,11 +62,6 @@ def get_dataloader(cfgs, args):
 
             total_batch_size = len(train_datasets)*cfgs['batch_size']
 
-
-            in_val_loaders.append(DataLoader(dataset=dataset,
-                                                batch_size=total_batch_size,
-                                                num_workers=args.num_workers,
-                                                shuffle=False))
             
             train_loaders = [InfiniteDataLoader(dataset=dataset,
                                                 weights=weights,
