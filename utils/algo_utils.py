@@ -174,8 +174,8 @@ class ERM(Algorithm):
                 _, pred = pred.max(1) # same as np.argmax()
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
-                acc.index_add_(0, all_d, corrects)
-                loader_len.index_add_(0, all_d, torch.ones_like(corrects))
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
                 pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
 
