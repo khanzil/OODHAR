@@ -160,35 +160,31 @@ class ERM(Algorithm):
         device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        acc = torch.zeros(self.n_domains)
-        loader_len = torch.zeros(self.n_domains)
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
 
-        pred_list = []
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
 
-        for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
-            all_x = all_x.to(device, non_blocking=True)
-            all_y = all_y.to(device, non_blocking=True)
-            all_d = all_d.to(device, non_blocking=True)
-            acc = acc.to(device, non_blocking=True)
-            loader_len = loader_len.to(device, non_blocking=True)
-
-            with torch.no_grad():
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
-                
-                acc += torch.bincount(all_d.long(), corrects, minlength=self.n_domains)
-                loader_len += torch.bincount(all_d, minlength=self.n_domains)
-                # pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                acc.index_add_(0, all_d, corrects)
+                loader_len.index_add_(0, all_d, torch.ones_like(corrects))
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-        
+
         self.featurizer.train()
         self.classifier.train()
         
         avg_acc = sum(acc) / sum(loader_len)
         
-        loader_len[loader_len == 0] += 1
+        loader_len = torch.clamp(loader_len, min=1)
         acc /= loader_len
 
         return pred_list, acc.cpu().numpy().tolist() , avg_acc.cpu().numpy().item()
