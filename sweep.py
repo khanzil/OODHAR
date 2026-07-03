@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('--search_start', type=int, default=0, help='To do more search if needed')
     parser.add_argument('--algo', type=str)
     parser.add_argument('--featurizer', type=str)
+    parser.add_argument('--num_workers', type=int)
     args = parser.parse_args()
 
     yaml = YAML()
@@ -40,7 +41,7 @@ if __name__ == '__main__':
         if search < args.search_start:
             continue
         print(f'Starting {cfg_yaml}')
-        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers=4 --seed={seed} --search={search}', shell=True)
+        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
 
 
 
