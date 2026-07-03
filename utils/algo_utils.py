@@ -62,8 +62,8 @@ class Algorithm():
 
                 _, _, te_acc = self.validate_step(test_loader)
 
-                loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
+                loss_list[-1].update({f'val_avg_acc': val_avg_acc})
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
