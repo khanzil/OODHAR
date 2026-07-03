@@ -251,6 +251,8 @@ class DANN(Algorithm):
             )
         )
 
+        self.n_domains = cfgs['num_domains']
+
         self.optimizer = torch.optim.Adam((list(self.featurizer.parameters())+list(self.classifier.parameters())+list(self.discriminator.parameters())), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
@@ -395,7 +397,9 @@ class IRM(Algorithm):
                                           weight_decay=cfgs['weight_decay'])
         self.lr = cfgs['learning_rate']
         self.wd = cfgs['weight_decay']
-        
+    
+        self.n_domains = cfgs['num_domains']
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
             self.irm_loss = F.cross_entropy
@@ -541,6 +545,8 @@ class VRex(Algorithm):
         self.lr = cfgs['learning_rate']
         self.wd = cfgs['weight_decay']
 
+        self.n_domains = cfgs['num_domains']
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
         else:
@@ -680,7 +686,9 @@ class Fish(Algorithm):
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
-        
+
+        self.n_domains = cfgs['num_domains']
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
         else:
