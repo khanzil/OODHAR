@@ -185,9 +185,9 @@ class ERM(Algorithm):
         avg_acc = sum(acc) / sum(loader_len)
         
         loader_len = torch.clamp(loader_len, min=1)
-        acc /= loader_len
+        all_acc = acc / loader_len
 
-        return pred_list, acc.cpu().numpy().tolist() , avg_acc.cpu().numpy().item()
+        return pred_list, all_acc.cpu().numpy().tolist() , avg_acc.cpu().numpy().item()
 
 
 
