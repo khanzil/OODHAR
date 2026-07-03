@@ -74,19 +74,22 @@ def get_dataloader(cfgs, args):
                                        batch_size=val_batch_size,
                                        num_workers=args.num_workers,
                                        shuffle=False,
-                                       pin_memory=True)
+                                       pin_memory=True,
+                                       persistent_workers=True)
 
             out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
                                         batch_size=val_batch_size,
                                         num_workers=args.num_workers,
                                         shuffle=False,
-                                        pin_memory=True)
+                                        pin_memory=True,
+                                        persistent_workers=True)
             
             test_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in test_datasets]),
                                      batch_size=val_batch_size,
                                      num_workers=args.num_workers,
                                      shuffle=False,
-                                     pin_memory=True)
+                                     pin_memory=True,
+                                     persistent_workers=True)
 
             loaders.append((train_loader, in_val_loader, out_val_loader, test_loader))
 
