@@ -310,33 +310,39 @@ class DANN(Algorithm):
     def predict(self, x):
         return self.classifier(self.featurizer(x))
 
-    def validate_step(self, loader, test_dom=None):
+    def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        pred_list = []
-        acc = 0.0
-        loader_len = 0.0
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
 
-        for batch_idx, (all_x, all_y, _) in enumerate(loader):
-            device = 'cuda' if self.cuda else 'cpu'
-            all_x = all_x.to(device, non_blocking=True)
-            all_y = all_y.to(device, non_blocking=True)
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
 
-
-            with torch.no_grad():
-                all_z = self.featurizer(all_x)
-                pred = self.classifier(all_z)
+                pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                num_corrects = torch.eq(pred, all_y).sum()
-                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-            acc += num_corrects.cpu().numpy()
-            loader_len += all_x.shape[0]
 
         self.featurizer.train()
         self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
 
-        return pred_list, acc/loader_len
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
@@ -456,31 +462,38 @@ class IRM(Algorithm):
         return self.network(x)
 
     def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        acc = 0.0
-        loader_len = 0.0
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
 
-        pred_list = []
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
 
-        for batch_idx, (all_x, all_y, _) in enumerate(loader):
-            device = 'cuda' if self.cuda else 'cpu'
-            all_x = all_x.to(device, non_blocking=True)
-            all_y = all_y.to(device, non_blocking=True)
-
-            with torch.no_grad():
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                num_corrects = torch.eq(pred, all_y).sum()
-                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()
-                loader_len += all_x.shape[0]
 
         self.featurizer.train()
         self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
 
-        return pred_list, acc/loader_len
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
@@ -591,31 +604,38 @@ class VRex(Algorithm):
         return self.network(x)
 
     def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        acc = 0.0
-        loader_len = 0.0
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
 
-        pred_list = []
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
 
-        for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
-            device = 'cuda' if self.cuda else 'cpu'
-            all_x = all_x.to(device, non_blocking=True)
-            all_y = all_y.to(device, non_blocking=True)
-
-            with torch.no_grad():
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                num_corrects = torch.eq(pred, all_y).sum()
-                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()      
-                loader_len += all_x.shape[0]
 
         self.featurizer.train()
         self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
 
-        return pred_list, acc/loader_len
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
@@ -716,31 +736,38 @@ class Fish(Algorithm):
         return self.network(x)
 
     def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
         self.featurizer.eval()
         self.classifier.eval()
-        acc = 0.0
-        loader_len = 0.0
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
 
-        pred_list = []
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
 
-        for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
-            device = 'cuda' if self.cuda else 'cpu'
-            all_x = all_x.to(device, non_blocking=True)
-            all_y = all_y.to(device, non_blocking=True)
-
-            with torch.no_grad():
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                num_corrects = torch.eq(pred, all_y).sum()
-                pred_list.extend(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
-                acc += num_corrects.cpu().numpy()      
-                loader_len += all_x.shape[0]
 
         self.featurizer.train()
         self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
 
-        return pred_list, acc/loader_len
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
 
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
