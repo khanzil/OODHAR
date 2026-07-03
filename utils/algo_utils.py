@@ -43,33 +43,36 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                # start = time.time()
-                # tqdm.write(str(time.time()-start))
-                _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
-                # tqdm.write(str(time.time()-start))
-                for i_dom, acc in enumerate(tr_all_acc):
-                    if i_dom == i_test_dom:
-                        continue
-                    loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
-                loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
-                # tqdm.write(str(time.time()-start))
-                _, _, te_acc = self.validate_step(test_loader)
-                # tqdm.write(str(time.time()-start))
-                loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
-                # tqdm.write(str(time.time()-start))
-                _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
-                # tqdm.write(str(time.time()-start))
-                for i_dom, acc in enumerate(val_all_acc):
-                    if i_dom == i_test_dom:
-                        continue
-                    loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
-                loss_list[-1].update({f'val_avg_acc': val_avg_acc})
-                # tqdm.write(str(time.time()-start))
+                _, train_acc = self.validate_step(in_val_loader)
+                _, val_acc = self.validate_step(out_val_loader)
+                _, test_acc = self.validate_step(test_loader)
+
+
+                # _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
+                # for i_dom, acc in enumerate(tr_all_acc):
+                #     if i_dom == i_test_dom:
+                #         continue
+                #     loss_list[-1].update({f'tr_dom{i_dom}_acc': acc})
+                # loss_list[-1].update({f'tr_avg_acc': tr_avg_acc})
+                # _, _, te_acc = self.validate_step(test_loader)
+                # loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
+                # _, val_all_acc, val_avg_acc = self.validate_step(out_val_loader)
+                # for i_dom, acc in enumerate(val_all_acc):
+                #     if i_dom == i_test_dom:
+                #         continue
+                #     loss_list[-1].update({f'val_dom{i_dom}_acc': acc})
+                # loss_list[-1].update({f'val_avg_acc': val_avg_acc})
+                
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
                 
-                loss_list[-1].update({'step': float(step),
-                                      'mem_gb': mem_gb})
-                
+                # loss_list[-1].update({'step': float(step),
+                #                       'mem_gb': mem_gb})
+                loss_list[-1].update({'train_acc': train_acc,
+                                    'val_acc': val_acc,
+                                    'test_acc': test_acc,
+                                    'step': float(step),
+                                    'mem_gb': mem_gb})
+
                 '''
                     Print and save validation results at every val step
                 '''
@@ -166,8 +169,10 @@ class ERM(Algorithm):
         self.featurizer.eval()
         self.classifier.eval()
         with torch.inference_mode():
-            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
-            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            # acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            # loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            acc = 0.0
+            loader_len = 0.0
             pred_list = []
 
             for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
@@ -179,20 +184,22 @@ class ERM(Algorithm):
                 _, pred = pred.max(1) # same as np.argmax()
                 
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
-                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
-                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                acc += sum(corrects)
+                loader_len += all_x.shape[0]
+                # acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                # loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
                 pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
 
 
         self.featurizer.train()
         self.classifier.train()
         
-        avg_acc = sum(acc) / sum(loader_len)
+        # avg_acc = sum(acc) / sum(loader_len)
         
-        loader_len = torch.clamp(loader_len, min=1)
+        # loader_len = torch.clamp(loader_len, min=1)
         all_acc = acc / loader_len
 
-        return pred_list, all_acc.cpu().numpy().tolist() , avg_acc.cpu().numpy().item()
+        return pred_list, all_acc.cpu().numpy() #.tolist(), avg_acc.cpu().numpy().item()
 
 
 
