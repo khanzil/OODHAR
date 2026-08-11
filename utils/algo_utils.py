@@ -258,16 +258,15 @@ class Proposed1(Algorithm):
                                       )
 
         self.n_domains = cfgs['num_domains']
+        self.lambd = cfgs['Proposed1']['lambd']
 
         self.network = nn.Sequential(self.featurizer, self.C_branch, self.classifier)
-        self.optimizer = torch.optim.Adam(self.network.parameters(), 
+        self.optimizer = torch.optim.Adam(list(self.network.parameters()) + 
+                                          list(self.featurizer.parameters()) +
+                                          list(self.D_branch.parameters()) +
+                                          list(self.d_classifier.parameters()), 
                                           lr=cfgs['learning_rate'],
-                                          weight_decay=cfgs['weight_decay'])
-
-        self.d_optimizer = torch.optim.Adam(list(self.featurizer.parameters())+list(self.D_branch.parameters())+list(self.d_classifier.parameters()), 
-                                          lr=cfgs['learning_rate'],
-                                          weight_decay=cfgs['weight_decay'])
-        
+                                          weight_decay=cfgs['weight_decay'])    
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
@@ -297,7 +296,7 @@ class Proposed1(Algorithm):
         device = 'cuda' if self.cuda else 'cpu'
         all_x = all_x.to(device, non_blocking=True)
         all_y = all_y.to(device, non_blocking=True)
-        all_d = all_d.to(device, non_blocking=True) 
+        all_d = all_d.to(device, non_blocking=True)
 
         all_z = self.featurizer(all_x)
 
@@ -307,15 +306,11 @@ class Proposed1(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.loss_type_d(pred_d, all_d)
 
-        loss = loss_class + loss_domain
+        loss = loss_class + self.lambd * loss_domain
 
         self.optimizer.zero_grad()
-        self.d_optimizer.zero_grad()
-
         loss.backward()
-
         self.optimizer.step()
-        self.d_optimizer.step()
 
         return {'loss': loss.item(), 
                 'loss_class': loss_class.item(),
@@ -978,7 +973,7 @@ class CFSM(Algorithm):
         self.d_classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_train_domains'],
-            cfgs['CFSM']['nonlinear_discriminator']
+            cfgs['CFSM']['d_nonlinear_classifer']
         )
 
         self.n_domains = cfgs['num_domains']
@@ -994,15 +989,11 @@ class CFSM(Algorithm):
         )
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
-        self.optimizer = torch.optim.Adam(self.network.parameters(), 
+        self.optimizer = torch.optim.Adam(list(self.network.parameters())+
+                                          list(self.EnvRelated.parameters())+
+                                          list(self.d_classifier.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
-
-        self.d_optimizer = torch.optim.Adam((list(self.featurizer.parameters())+
-                                             list(self.EnvRelated.parameters())+
-                                             list(self.d_classifier.parameters())), 
-                                            lr=cfgs['CFSM']['d_learning_rate'],
-                                            weight_decay=cfgs['CFSM']['d_weight_decay'])
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
@@ -1027,6 +1018,9 @@ class CFSM(Algorithm):
         return (product ** 2).sum()
 
     def cross_sample_loss(z_cate, all_y, all_d, classifier, ):
+        z_cate = nn.functional.normalize(z_cate, p=2, dim=1)
+
+
         pass
 
     def update(self, minibatches, step, unlabeled=None):

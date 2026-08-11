@@ -30,4 +30,7 @@ def get_random_search_configs(cfgs):
         cfgs['VRex']['lambd'] = 10**np.random.uniform(-1,1)
 
     elif cfgs['algorithm'] == 'Fish':
-        cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-2,-1)
+        cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-1,0)
+
+    elif cfgs['algorithm'] == 'Proposed1':
+        cfgs['Proposed1']['lambd'] = 10**np.random.uniform(-1,0)
