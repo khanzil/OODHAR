@@ -309,7 +309,7 @@ class Proposed1(Algorithm):
 
         loss = loss_class + loss_domain
 
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(retain_graph=True)
         loss_class.backward()
         self.optimizer.step()
 
