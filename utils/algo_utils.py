@@ -247,13 +247,13 @@ class Proposed1(Algorithm):
 
         self.C_branch = nn.Sequential(nn.Flatten(),
                                       nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
-                                      nn.ReLu(),
+                                      nn.ReLU(),
                                       nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
                                       )
 
         self.D_branch = nn.Sequential(nn.Flatten(),
                                       nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
-                                      nn.ReLu(),
+                                      nn.ReLU(),
                                       nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
                                       )
 
@@ -265,8 +265,8 @@ class Proposed1(Algorithm):
                                           weight_decay=cfgs['weight_decay'])
 
         self.d_optimizer = torch.optim.Adam(list(self.featurizer.parameters())+list(self.D_branch.parameters())+list(self.d_classifier.parameters()), 
-                                          lr=cfgs['Proposed1']['d_learning_rate'],
-                                          weight_decay=cfgs['Proposed1']['d_weight_decay'])
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
         
         
         if cfgs['loss_type'] == 'CrossEntropy':
