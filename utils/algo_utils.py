@@ -258,7 +258,7 @@ class Proposed1(Algorithm):
                                       )
 
         self.n_domains = cfgs['num_domains']
-        self.lambd = cfgs['Proposed1']['lambd']
+        self.iter = cfgs['Proposed1']['iter']
 
         self.network = nn.Sequential(self.featurizer, self.C_branch, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters()) + 
@@ -300,13 +300,15 @@ class Proposed1(Algorithm):
 
         all_z = self.featurizer(all_x)
 
-        pred = self.classifier(self.C_branch(all_z) - self.D_branch(all_z).detach())
+        lambd = 1 if self >= self.iter else 0
+
+        pred = self.classifier(self.C_branch(all_z) - lambd * self.D_branch(all_z).detach())
         pred_d = self.d_classifier(self.D_branch(all_z))
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.loss_type_d(pred_d, all_d)
 
-        loss = loss_class + self.lambd * loss_domain
+        loss = loss_class + loss_domain
 
         self.optimizer.zero_grad()
         loss.backward()

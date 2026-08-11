@@ -33,4 +33,4 @@ def get_random_search_configs(cfgs):
         cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-1,0)
 
     elif cfgs['algorithm'] == 'Proposed1':
-        cfgs['Proposed1']['lambd'] = 10**np.random.uniform(-1,0)
+        cfgs['Proposed1']['iter'] = int(np.random.uniform(500,700))

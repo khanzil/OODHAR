@@ -43,7 +43,7 @@ VRex:
 Proposed1:
   loss_type_d: CrossEntropy
   d_nonlinear_classifier: true 
-  lambd: 0.5 
+  iter: 500 
 
 # model
 featurizer: ResNet
