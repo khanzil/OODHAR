@@ -257,7 +257,7 @@ class Proposed1(Algorithm):
                                       nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
                                       )
 
-        self.n_domains = cfgs['num_train_domains']
+        self.n_domains = cfgs['num_domains']
 
         self.network = nn.Sequential(self.featurizer, self.C_branch, self.classifier)
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
