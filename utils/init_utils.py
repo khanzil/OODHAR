@@ -8,11 +8,12 @@ from utils.dataset_utils import *
 from utils.sweep_utils import get_random_search_configs
 
 algos_dict = {
-    'ERM'   : ERM,
-    'DANN'  : DANN,
-    'IRM'   : IRM,
-    'Fish'  : Fish,
-    'VRex'  : VRex,
+    'ERM'       : ERM,
+    'DANN'      : DANN,
+    'IRM'       : IRM,
+    'Fish'      : Fish,
+    'VRex'      : VRex,
+    'Proposed1' : Proposed1
 }
 
 datasets_dict = {

@@ -40,7 +40,9 @@ Fish:
 VRex:
   iter: 0
   lambd: 0.2
-
+Proposed1:
+  loss_type_d: CrossEntropy
+  nonlinear_discriminator: true  
 
 # model
 featurizer: ResNet
