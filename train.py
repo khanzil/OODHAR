@@ -16,9 +16,9 @@ def main():
             dom_ckpts_dir = os.path.join(ckpts_dir, f'test_dom_{i_loader}')
 
             if not os.path.isdir(dom_results_dir):
-                os.makedirs(os.path.join(dom_results_dir,'ckpts'), exist_ok=True)
+                os.makedirs(os.path.join(dom_results_dir), exist_ok=True)
             if not os.path.isdir(dom_ckpts_dir):
-                os.makedirs(os.path.join(dom_ckpts_dir,'ckpts'), exist_ok=True)
+                os.makedirs(os.path.join(dom_ckpts_dir), exist_ok=True)
 
             loss_list = algo.train(num_steps=num_steps, 
                                    train_loader=train_loader, 

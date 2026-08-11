@@ -47,8 +47,6 @@ def init_loader(cfgs, args):
             yaml.dump(cfgs, f)    
             yaml.dump(cfgs, sys.stdout)
 
-
-
     '''
         get dataloader
     '''
