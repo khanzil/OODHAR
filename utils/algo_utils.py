@@ -301,7 +301,7 @@ class Proposed1(Algorithm):
 
         all_z = self.featurizer(all_x)
 
-        pred = self.classifier(self.C_branch(all_z) - self.D_branch(all_z))
+        pred = self.classifier(self.C_branch(all_z) - self.D_branch(all_z).detach())
         pred_d = self.d_classifier(self.D_branch(all_z))
 
         loss_class = self.loss_type(pred, all_y)
@@ -310,11 +310,11 @@ class Proposed1(Algorithm):
         loss = loss_class + loss_domain
 
         self.optimizer.zero_grad()
-        loss_class.backward(retain_graph=True)
-        self.optimizer.step()
-
         self.d_optimizer.zero_grad()
-        loss_domain.backward()
+
+        loss.backward()
+
+        self.optimizer.step()
         self.d_optimizer.step()
 
         return {'loss': loss.item(), 
