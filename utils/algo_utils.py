@@ -300,7 +300,7 @@ class Proposed1(Algorithm):
 
         all_z = self.featurizer(all_x)
 
-        lambd = 1 if self >= self.iter else 0
+        lambd = 1 if step >= self.iter else 0
 
         pred = self.classifier(self.C_branch(all_z) - lambd * self.D_branch(all_z).detach())
         pred_d = self.d_classifier(self.D_branch(all_z))
@@ -982,18 +982,30 @@ class CFSM(Algorithm):
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
         self.EnvRelated = nn.Sequential(
             nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.SamplePrototype = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(sum(p.numel() for p in self.classifier.parameters()),self.featurizer.n_outputs),
+            nn.ReLU(),
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters())+
                                           list(self.EnvRelated.parameters())+
-                                          list(self.d_classifier.parameters()), 
+                                          list(self.d_classifier.parameters())+
+                                          list(self.SamplePrototype.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
@@ -1007,13 +1019,13 @@ class CFSM(Algorithm):
         else:
             raise NotImplementedError(f"{cfgs['d_loss_type']} is not implemented")
 
-
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
             self.CateRelated.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
+            self.SamplePrototype.cuda()
 
     def orth_loss(CateRelated: nn.Linear, EnvRelated: nn.Linear):
         product = CateRelated.weight @ EnvRelated.weight
@@ -1021,6 +1033,7 @@ class CFSM(Algorithm):
 
     def cross_sample_loss(z_cate, all_y, all_d, classifier, ):
         z_cate = nn.functional.normalize(z_cate, p=2, dim=1)
+
 
 
         pass
