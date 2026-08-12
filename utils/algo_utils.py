@@ -1239,15 +1239,14 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        tqdm.write(threshold)
-        tqdm.write(pos_pair)
-        tqdm.write(neg_pair)
-        tqdm.write(idx_i, idx_j)
-        tqdm.write(prototype)
+        print(threshold)
+        print(pos_pair)
+        print(neg_pair)
+        print(idx_i, idx_j)
+        print(prototype)
 
         return torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos]))
 
-    
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1317,6 +1316,7 @@ class CFSM(Algorithm):
 
         self.featurizer.train()
         self.classifier.train()
+        self.CateRelated.train()
         
         avg_acc = sum(acc) / sum(loader_len)
         
