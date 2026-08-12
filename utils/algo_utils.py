@@ -1227,7 +1227,7 @@ class CFSM(Algorithm):
             return torch.tensor(0, device=all_y.device)
         
         threshold = torch.mean(cos_sim[pos_pair]) * self.theta
-        neg_pair = (cos_sim < threshold) & (~pos_pair) & (~self_pair)
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair)
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
