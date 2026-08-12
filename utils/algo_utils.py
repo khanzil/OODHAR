@@ -384,6 +384,188 @@ class Proposed1(Algorithm):
         np.random.set_state(state_dict['np_random'])
         return step    
 
+
+class Proposed2(Algorithm):
+    def __init__ (self, cfgs, args):
+        self.cuda = args.cuda
+        self.featurizer = Featurizer(cfgs)
+        self.classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            is_nonlinear=False # Linear classifier is required
+        )
+
+        self.d_classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_train_domains'],
+            cfgs['CFSM']['d_nonlinear_classifier']
+        )
+
+        self.n_domains = cfgs['num_domains']
+        self.theta = cfgs['CFSM']['theta']
+        self.lambd_orth = cfgs['CFSM']['lambd_orth']
+        self.lambd_domain = cfgs['CFSM']['lambd_domain']
+        self.lambd_cross = cfgs['CFSM']['lambd_cross']
+
+        self.CateRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.EnvRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
+        self.optimizer = torch.optim.Adam(list(self.network.parameters())+
+                                          list(self.EnvRelated.parameters())+
+                                          list(self.d_classifier.parameters())+
+                                          list(self.ClassPrototype.parameters()), 
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
+        
+        if cfgs['loss_type'] == 'CrossEntropy':
+            self.loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
+
+        if cfgs['CFSM']['loss_type_d'] == 'CrossEntropy':
+            self.d_loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type_d']} is not implemented")
+
+        if self.cuda:
+            self.featurizer.cuda()
+            self.classifier.cuda()
+            self.CateRelated.cuda()
+            self.EnvRelated.cuda()
+            self.d_classifier.cuda()
+            self.ClassPrototype.cuda()
+
+    def orth_loss(self):
+        product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
+        return (product ** 2).sum()
+
+    def distr_loss(self, z_cate, all_y):
+
+
+        pass
+
+    def update(self, minibatches, step, unlabeled=None):
+        self.featurizer.train()
+        self.classifier.train()
+        self.CateRelated.train()
+
+        all_x = torch.cat([x for x,_,_ in minibatches])
+        all_y = torch.cat([y for _,y,_ in minibatches])
+        all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
+
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
+        all_d = all_d.to(device, non_blocking=True)
+
+        all_z = self.featurizer(all_x)
+        z_cate = self.CateRelated(all_z)
+        z_env = self.EnvRelated(all_z)
+
+        pred = self.classifier(z_cate)
+        d_pred = self.d_classifier(z_env)
+
+        loss_class = self.loss_type(pred, all_y)
+        loss_domain = self.d_loss_type(d_pred, all_d)
+        loss_orth = self.orth_loss()
+        loss_cross = self.cross_sample_loss(z_cate, all_y)
+
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss'          : loss.item(),
+                'loss_class'    : loss_class.item(),
+                'loss_domain'   : loss_domain.item(),
+                'loss_orth'     : loss_orth.item(),
+                'loss_cross'    : loss_cross.item(),
+                }
+
+    def predict(self, x):
+        return self.network(x)
+
+    def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
+        self.featurizer.eval()
+        self.CateRelated.eval()
+        self.classifier.eval()
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
+
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
+
+                pred = self.predict(all_x)
+                _, pred = pred.max(1) # same as np.argmax()
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+
+
+        self.featurizer.train()
+        self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
+
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
+
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
+
+        state_dict = {
+            'step': step,
+            'network': self.network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'rng': torch.get_rng_state(),
+            'np_random': np.random.get_state(),
+            'EnvRelated': self.EnvRelated.state_dict(),
+            'd_classifier': self.d_classifier.state_dict(),
+            'ClassPrototype': self.ClassPrototype.state_dict(),
+        }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)        
+
+    def load_ckpt(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, weights_only=False)
+        step = state_dict['step']
+        self.network.load_state_dict(state_dict['network'])
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        torch.set_rng_state(state_dict['rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        np.random.set_state(state_dict['np_random'])
+        return step
+
+
+
 class DANN(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda
@@ -1045,7 +1227,7 @@ class CFSM(Algorithm):
             return torch.tensor(0, device=all_y.device)
         
         threshold = torch.mean(cos_sim[pos_pair]) * self.theta
-        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair)
+        neg_pair = (cos_sim < threshold) & (~pos_pair) & (~self_pair)
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
@@ -1057,7 +1239,7 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        return torch.mean(torch.inner(z_pos, prototype[y_pos]) - torch.inner(z_neg, prototype[y_pos]))
+        return torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos]))
 
     
 
