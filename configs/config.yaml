@@ -42,7 +42,7 @@ VRex:
   lambd: 0.2
 CFSM:
   loss_type_d: CrossEntropy
-  d_nonlinear_classifier: true 
+  d_nonlinear_classifier: false 
   lambd_domain: 0.1
   lambd_orth: 0.1
   lambd_cross: 0.1

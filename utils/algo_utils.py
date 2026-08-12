@@ -969,7 +969,7 @@ class CFSM(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_classes'],
-            cfgs['nonlinear_classifier']
+            is_nonlinear=False
         )
 
         self.d_classifier = Classifier(
@@ -1000,7 +1000,7 @@ class CFSM(Algorithm):
 
         self.SamplePrototype = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(sum(p.numel() for p in self.classifier.parameters()),self.featurizer.n_outputs),
+            nn.Linear(self.classifier.weight.shape[1],self.featurizer.n_outputs), # classifier.weight have shape (n_class, n_hidden)
             nn.ReLU(),
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
         )
@@ -1018,7 +1018,7 @@ class CFSM(Algorithm):
         else:
             raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
 
-        if cfgs['CFSM']['d_loss_type'] == 'CrossEntropy':
+        if cfgs['CFSM']['loss_type_d'] == 'CrossEntropy':
             self.d_loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfgs['d_loss_type']} is not implemented")
@@ -1055,7 +1055,7 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
-        prototype = nn.functional.normalize(self.SamplePrototype((self.classifier.parameters())), p=2, dim=1)
+        prototype = nn.functional.normalize(self.SamplePrototype((self.classifier.weight)), p=2, dim=1)
 
         return torch.mean(torch.inner(z_pos, prototype[y_pos]) - torch.inner(z_neg, prototype[y_pos]))
         
