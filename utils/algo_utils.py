@@ -969,7 +969,7 @@ class CFSM(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_classes'],
-            is_nonlinear=False # Linear classifier is require to get class prototype
+            is_nonlinear=False # Linear classifier is required
         )
 
         self.d_classifier = Classifier(
@@ -1004,7 +1004,6 @@ class CFSM(Algorithm):
             nn.ReLU(),
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
         )
-
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters())+
@@ -1059,7 +1058,8 @@ class CFSM(Algorithm):
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
         return torch.mean(torch.inner(z_pos, prototype[y_pos]) - torch.inner(z_neg, prototype[y_pos]))
-        
+
+    
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1077,9 +1077,10 @@ class CFSM(Algorithm):
 
         all_z = self.featurizer(all_x)
         z_cate = self.CateRelated(all_z)
+        z_env = self.EnvRelated(all_z)
 
         pred = self.classifier(z_cate)
-        d_pred = self.d_classifier(self.EnvRelated(all_z))
+        d_pred = self.d_classifier(z_env)
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
@@ -1149,6 +1150,9 @@ class CFSM(Algorithm):
             'optimizer': self.optimizer.state_dict(),
             'rng': torch.get_rng_state(),
             'np_random': np.random.get_state(),
+            'EnvRelated': self.EnvRelated.state_dict(),
+            'd_classifier': self.d_classifier.state_dict(),
+            'ClassPrototype': self.ClassPrototype.state_dict(),
         }
         if torch.cuda.is_available():
             state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
