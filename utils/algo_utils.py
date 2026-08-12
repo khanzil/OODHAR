@@ -392,20 +392,18 @@ class Proposed2(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_classes'],
-            is_nonlinear=False # Linear classifier is required
+            is_nonlinear=cfgs['nonlinear_classifier']
         )
 
         self.d_classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_train_domains'],
-            cfgs['CFSM']['d_nonlinear_classifier']
+            cfgs['Proposed2']['d_nonlinear_classifier']
         )
 
         self.n_domains = cfgs['num_domains']
-        self.theta = cfgs['CFSM']['theta']
-        self.lambd_orth = cfgs['CFSM']['lambd_orth']
-        self.lambd_domain = cfgs['CFSM']['lambd_domain']
-        self.lambd_cross = cfgs['CFSM']['lambd_cross']
+        self.lambd_orth = cfgs['Proposed2']['lambd_orth']
+        self.lambd_domain = cfgs['Proposed2']['lambd_domain']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -421,13 +419,23 @@ class Proposed2(Algorithm):
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
+        self.classifier_per_d = Classifier(
+                                            self.featurizer.n_outputs,
+                                            cfgs['num_classes'],
+                                            is_nonlinear=cfgs['nonlinear_classifier']
+                                        )
+
+
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters())+
                                           list(self.EnvRelated.parameters())+
-                                          list(self.d_classifier.parameters())+
-                                          list(self.ClassPrototype.parameters()), 
+                                          list(self.d_classifier.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
+
+        self.optimizer_inner = torch.optim.Adam(self.classifier_per_d.parameters(), 
+                                                lr=cfgs['learning_rate'],
+                                                weight_decay=cfgs['weight_decay'])        
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
@@ -445,16 +453,13 @@ class Proposed2(Algorithm):
             self.CateRelated.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
-            self.ClassPrototype.cuda()
+            for classifier in self.classifier_per_d:
+                classifier.cuda()
 
     def orth_loss(self):
         product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
         return (product ** 2).sum()
 
-    def distr_loss(self, z_cate, all_y):
-
-
-        pass
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -474,15 +479,32 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
+        self.classifier_per_d.load_state_dict(self.classifier.state_dict())
+
+        for i_dom, (x,y,_) in minibatches:
+            x = x.to(device)
+            y = y.to(device)
+            loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
+
+            self.optimizer_inner.zero_grad()
+            loss_class_inner.backward()
+            self.optimizer_inner.step()
+
+            if i_dom == 0:
+                inner_weight = ParamDict(self.classifier_per_d)
+            else:
+                inner_weight += ParamDict(self.classifier_per_d)
+
+        self.classifier.load_state_dict(inner_weight/len(minibatches))
+
         pred = self.classifier(z_cate)
         d_pred = self.d_classifier(z_env)
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_sample_loss(z_cate, all_y)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -492,7 +514,6 @@ class Proposed2(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross'    : loss_cross.item(),
                 }
 
     def predict(self, x):
@@ -547,7 +568,6 @@ class Proposed2(Algorithm):
             'np_random': np.random.get_state(),
             'EnvRelated': self.EnvRelated.state_dict(),
             'd_classifier': self.d_classifier.state_dict(),
-            'ClassPrototype': self.ClassPrototype.state_dict(),
         }
         if torch.cuda.is_available():
             state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
