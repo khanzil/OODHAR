@@ -56,6 +56,7 @@ Proposed2:
   d_nonlinear_classifier: true
   lambd_domain: 0.1
   lambd_orth: 0.1
+  inner_steps: 2
 
 # model
 featurizer: ResNet

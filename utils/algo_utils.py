@@ -8,6 +8,7 @@ from tqdm import tqdm
 from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict, LinearProj
 import json
 import time
+import copy
 
 
 class Algorithm():
@@ -404,6 +405,7 @@ class Proposed2(Algorithm):
         self.n_domains = cfgs['num_domains']
         self.lambd_orth = cfgs['Proposed2']['lambd_orth']
         self.lambd_domain = cfgs['Proposed2']['lambd_domain']
+        self.inner_steps = cfgs['Proposed2']['inner_steps']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -479,22 +481,21 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
-        self.classifier_per_d.load_state_dict(self.classifier.state_dict())
-
         for i_dom, (x,y,_) in minibatches:
+            self.classifier_per_d.load_state_dict(self.classifier.state_dict())
             x = x.to(device)
             y = y.to(device)
-            loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
+            for step in range(self.inner_steps):
+                loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
 
-            self.optimizer_inner.zero_grad()
-            loss_class_inner.backward()
-            self.optimizer_inner.step()
+                self.optimizer_inner.zero_grad()
+                loss_class_inner.backward()
+                self.optimizer_inner.step()
 
             if i_dom == 0:
-                inner_weight = ParamDict(self.classifier_per_d)
+                inner_weight = ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
             else:
-                inner_weight += ParamDict(self.classifier_per_d)
-
+                inner_weight += ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
         self.classifier.load_state_dict(inner_weight/len(minibatches))
 
         pred = self.classifier(z_cate)

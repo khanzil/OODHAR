@@ -40,3 +40,8 @@ def get_random_search_configs(cfgs):
         cfgs['CFSM']['lambd_orth'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['lambd_cross'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['theta'] = np.random.uniform(0.1,1)
+
+    elif cfgs['algorithm'] == 'CFSM':
+        cfgs['CFSM']['lambd_domain'] = 10**np.random.uniform(0,1)
+        cfgs['CFSM']['lambd_orth'] = 10**np.random.uniform(0,1)
+        cfgs['CFSM']['inner_steps'] = np.random.randint(1,6)
