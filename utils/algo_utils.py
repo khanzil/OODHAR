@@ -1239,9 +1239,6 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
-        print(pos_pair.sum())
-        print(neg_pair.sum())
-
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
