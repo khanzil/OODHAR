@@ -984,10 +984,26 @@ class CFSM(Algorithm):
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
         self.lambd_cross = cfgs['CFSM']['lambd_cross']
 
-        self.CateRelated = LinearProj(self.featurizer.n_outputs,self.featurizer.n_outputs)
-        self.EnvRelated = LinearProj(self.featurizer.n_outputs,self.featurizer.n_outputs)
-        self.ClassPrototype = LinearProj(self.classifier[-1].weight.shape[1],self.featurizer.n_outputs)
-        # classifier.weight have shape (n_class, n_hidden)
+        self.CateRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.EnvRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.ClassPrototype = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.classifier.weight.shape[1],self.featurizer.n_outputs), # classifier.weight have shape (n_class, n_hidden)
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+        )
 
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
