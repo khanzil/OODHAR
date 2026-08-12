@@ -1242,11 +1242,11 @@ class CFSM(Algorithm):
         print(z_pos.shape, z_neg.shape)
         print(prototype.shape)
         print(prototype[y_pos].shape)
-        print(torch.inner(z_pos, prototype[y_pos]).shape)
+        print(torch.sum(z_neg * prototype[y_pos], dim=1).shape)
 
         
 
-        return torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos]))
+        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
 
     def update(self, minibatches, step, unlabeled=None):
