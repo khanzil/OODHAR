@@ -979,6 +979,10 @@ class CFSM(Algorithm):
         )
 
         self.n_domains = cfgs['num_domains']
+        self.cross_sample_threshold = cfgs['CFSM']['threshold']
+        self.lambd_orth = cfgs['CFSM']['lambd_orth']
+        self.lambd_domain = cfgs['CFSM']['lambd_domain']
+        self.lambd_cross = cfgs['CFSM']['lambd_cross']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -998,7 +1002,7 @@ class CFSM(Algorithm):
             nn.Flatten(),
             nn.Linear(sum(p.numel() for p in self.classifier.parameters()),self.featurizer.n_outputs),
             nn.ReLU(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
         )
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
@@ -1031,12 +1035,30 @@ class CFSM(Algorithm):
         product = CateRelated.weight @ EnvRelated.weight
         return (product ** 2).sum()
 
-    def cross_sample_loss(z_cate, all_y, all_d, classifier, ):
-        z_cate = nn.functional.normalize(z_cate, p=2, dim=1)
+    def cross_sample_loss(self, z_cate, all_y):
+        z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        pos_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
 
+        if not pos_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        threshold = torch.mean(cos_sim[pos_pair]) * self.cross_sample_threshold
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair)
 
+        if not neg_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        idx_i, idx_j = torch.where(neg_pair)
+        z_pos = z_cate_norm[idx_i]
+        z_neg = z_cate_norm[idx_j]
+        y_pos = all_y[idx_i]
 
-        pass
+        prototype = nn.functional.normalize(self.SamplePrototype((self.classifier.parameters())), p=2, dim=1)
+
+        return torch.mean(torch.inner(z_pos, prototype[y_pos]) - torch.inner(z_neg, prototype[y_pos]))
+        
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1059,19 +1081,21 @@ class CFSM(Algorithm):
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
-
         loss_orth = self.orth_loss(self.CateRelated, self.EnvRelated)
+        loss_cross = self.cross_sample_loss(z_cate, all_y)
 
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
-
-
-
-        
         self.optimizer.zero_grad()
-        loss_class.backward()
+        loss.backward()
         self.optimizer.step()
 
-        return {'loss_class' : loss_class.item()}
+        return {'loss'          : loss.item(),
+                'loss_class'    : loss_class.item(),
+                'loss_domain'   : loss_domain.item(),
+                'loss_orth'     : loss_orth.item(),
+                'loss_cross'    : loss_cross.item(),
+                }
 
     def predict(self, x):
         return self.network(x)
