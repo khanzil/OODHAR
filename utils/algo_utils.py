@@ -1031,8 +1031,8 @@ class CFSM(Algorithm):
             self.d_classifier.cuda()
             self.SamplePrototype.cuda()
 
-    def orth_loss(CateRelated: nn.Linear, EnvRelated: nn.Linear):
-        product = CateRelated.weight @ EnvRelated.weight
+    def orth_loss(self):
+        product = torch.inner(self.CateRelated.weight, self.EnvRelated.weight)
         return (product ** 2).sum()
 
     def cross_sample_loss(self, z_cate, all_y):
@@ -1067,11 +1067,11 @@ class CFSM(Algorithm):
 
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
+        all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
 
         device = 'cuda' if self.cuda else 'cpu'
         all_x = all_x.to(device, non_blocking=True)
         all_y = all_y.to(device, non_blocking=True)
-        all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
         all_d = all_d.to(device, non_blocking=True)
 
         all_z = self.featurizer(all_x)
@@ -1082,7 +1082,7 @@ class CFSM(Algorithm):
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
-        loss_orth = self.orth_loss(self.CateRelated, self.EnvRelated)
+        loss_orth = self.orth_loss()
         loss_cross = self.cross_sample_loss(z_cate, all_y)
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
