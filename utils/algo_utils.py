@@ -975,11 +975,11 @@ class CFSM(Algorithm):
         self.d_classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_train_domains'],
-            cfgs['CFSM']['d_nonlinear_classifer']
+            cfgs['CFSM']['d_nonlinear_classifier']
         )
 
         self.n_domains = cfgs['num_domains']
-        self.cross_sample_threshold = cfgs['CFSM']['threshold']
+        self.theta = cfgs['CFSM']['theta']
         self.lambd_orth = cfgs['CFSM']['lambd_orth']
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
         self.lambd_cross = cfgs['CFSM']['lambd_cross']
@@ -1044,7 +1044,7 @@ class CFSM(Algorithm):
         if not pos_pair.any():
             return torch.tensor(0, device=all_y.device)
         
-        threshold = torch.mean(cos_sim[pos_pair]) * self.cross_sample_threshold
+        threshold = torch.mean(cos_sim[pos_pair]) * self.theta
         neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair)
 
         if not neg_pair.any():

@@ -46,7 +46,7 @@ CFSM:
   lambd_domain: 0.1
   lambd_orth: 0.1
   lambd_cross: 0.1
-  threshold: 1
+  theta: 1
 Proposed1:
   loss_type_d: CrossEntropy
   d_nonlinear_classifier: true 
