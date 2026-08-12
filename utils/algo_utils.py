@@ -481,7 +481,7 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
-        for i_dom, (x,y,_) in minibatches:
+        for i_dom, (x,y,_) in enumerate(minibatches):
             self.classifier_per_d.load_state_dict(self.classifier.state_dict())
             x = x.to(device)
             y = y.to(device)
