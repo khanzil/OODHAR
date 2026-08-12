@@ -1072,6 +1072,7 @@ class CFSM(Algorithm):
         all_x = all_x.to(device, non_blocking=True)
         all_y = all_y.to(device, non_blocking=True)
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
+        all_d = all_d.to(device, non_blocking=True)
 
         all_z = self.featurizer(all_x)
         z_cate = self.CateRelated(all_z)
