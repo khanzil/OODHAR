@@ -5,7 +5,7 @@ import torch.autograd as autograd
 import numpy as np
 import os
 from tqdm import tqdm
-from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
+from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict, LinearProj
 import json
 import time
 
@@ -969,7 +969,7 @@ class CFSM(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_classes'],
-            is_nonlinear=False
+            is_nonlinear=False # Linear classifier is require to get class prototype
         )
 
         self.d_classifier = Classifier(
@@ -984,32 +984,17 @@ class CFSM(Algorithm):
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
         self.lambd_cross = cfgs['CFSM']['lambd_cross']
 
-        self.CateRelated = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
-            nn.ReLU(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
-        )
+        self.CateRelated = LinearProj(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        self.EnvRelated = LinearProj(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        self.ClassPrototype = LinearProj(self.classifier[-1].weight.shape[1],self.featurizer.n_outputs)
+        # classifier.weight have shape (n_class, n_hidden)
 
-        self.EnvRelated = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
-            nn.ReLU(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
-        )
-
-        self.SamplePrototype = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(self.classifier.weight.shape[1],self.featurizer.n_outputs), # classifier.weight have shape (n_class, n_hidden)
-            nn.ReLU(),
-            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
-        )
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters())+
                                           list(self.EnvRelated.parameters())+
                                           list(self.d_classifier.parameters())+
-                                          list(self.SamplePrototype.parameters()), 
+                                          list(self.ClassPrototype.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
@@ -1029,10 +1014,10 @@ class CFSM(Algorithm):
             self.CateRelated.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
-            self.SamplePrototype.cuda()
+            self.ClassPrototype.cuda()
 
     def orth_loss(self):
-        product = torch.inner(self.CateRelated.weight, self.EnvRelated.weight)
+        product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
         return (product ** 2).sum()
 
     def cross_sample_loss(self, z_cate, all_y):
@@ -1055,7 +1040,7 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
-        prototype = nn.functional.normalize(self.SamplePrototype((self.classifier.weight)), p=2, dim=1)
+        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
         return torch.mean(torch.inner(z_pos, prototype[y_pos]) - torch.inner(z_neg, prototype[y_pos]))
         
