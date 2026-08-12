@@ -41,7 +41,7 @@ def get_random_search_configs(cfgs):
         cfgs['CFSM']['lambd_cross'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['theta'] = np.random.uniform(0.1,1)
 
-    elif cfgs['algorithm'] == 'CFSM':
+    elif cfgs['algorithm'] == 'Proposed2':
         cfgs['Proposed2']['lambd_domain'] = 10**np.random.uniform(0,1)
         cfgs['Proposed2']['lambd_orth'] = 10**np.random.uniform(0,1)
         cfgs['Proposed2']['inner_steps'] = np.random.randint(1,6)
