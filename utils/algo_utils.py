@@ -1239,6 +1239,12 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
+        tqdm.write(threshold)
+        tqdm.write(pos_pair)
+        tqdm.write(neg_pair)
+        tqdm.write(idx_i, idx_j)
+        tqdm.write(prototype)
+
         return torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos]))
 
     
