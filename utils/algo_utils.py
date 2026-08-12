@@ -1006,7 +1006,7 @@ class CFSM(Algorithm):
         if cfgs['CFSM']['loss_type_d'] == 'CrossEntropy':
             self.d_loss_type = nn.CrossEntropyLoss()
         else:
-            raise NotImplementedError(f"{cfgs['d_loss_type']} is not implemented")
+            raise NotImplementedError(f"{cfgs['loss_type_d']} is not implemented")
 
         if self.cuda:
             self.featurizer.cuda()
