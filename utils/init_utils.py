@@ -13,7 +13,8 @@ algos_dict = {
     'IRM'       : IRM,
     'Fish'      : Fish,
     'VRex'      : VRex,
-    'Proposed1' : Proposed1
+    'Proposed1' : Proposed1,
+    'CFSM'      : CFSM
 }
 
 datasets_dict = {
