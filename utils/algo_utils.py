@@ -1215,7 +1215,7 @@ class CFSM(Algorithm):
 
     def orth_loss(self):
         product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
-        return (product ** 2).sum()
+        return (product ** 2).mean()
 
     def cross_sample_loss(self, z_cate, all_y):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
@@ -1238,13 +1238,6 @@ class CFSM(Algorithm):
         y_pos = all_y[idx_i]
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
-
-        print(z_pos.shape, z_neg.shape)
-        print(prototype.shape)
-        print(prototype[y_pos].shape)
-        print(torch.sum(z_neg * prototype[y_pos], dim=1).shape)
-
-        
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
