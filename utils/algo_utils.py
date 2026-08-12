@@ -1217,17 +1217,19 @@ class CFSM(Algorithm):
         product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
         return (product ** 2).mean()
 
-    def cross_sample_loss(self, z_cate, all_y):
+    def cross_sample_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
         cos_sim = torch.inner(z_cate_norm, z_cate_norm)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
         pos_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
 
+        in_dom_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (~self_pair)
+
         if not pos_pair.any():
             return torch.tensor(0, device=all_y.device)
         
         threshold = torch.mean(cos_sim[pos_pair]) * self.theta
-        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair)
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
@@ -1237,10 +1239,12 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
+        print(pos_pair.sum())
+        print(neg_pair.sum())
+
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
-
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1266,7 +1270,7 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_sample_loss(z_cate, all_y)
+        loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
