@@ -1244,6 +1244,7 @@ class CFSM(Algorithm):
         print(neg_pair.sum())
         print(torch.inner(z_neg, prototype[y_pos]))
         print(torch.inner(z_pos, prototype[y_pos]))
+        print(torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos])))
 
         return torch.mean(torch.inner(z_neg, prototype[y_pos]) - torch.inner(z_pos, prototype[y_pos]))
 
