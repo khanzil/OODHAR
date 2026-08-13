@@ -394,7 +394,7 @@ class Proposed2(Algorithm):
         self.classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_classes'],
-            is_nonlinear=cfgs['nonlinear_classifier']
+            is_nonlinear=False
         )
 
         self.d_classifier = Classifier(
@@ -410,6 +410,7 @@ class Proposed2(Algorithm):
         # P2
         # self.inner_steps = cfgs['Proposed2']['inner_steps']
         self.n_train_domains = cfgs['num_train_domains']
+        self.theta = cfgs['Proposed2']['theta']
 
         self.mbk = MiniBatchKMeans(
             n_clusters=self.n_train_domains,
