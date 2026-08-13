@@ -431,7 +431,7 @@ class Proposed2(Algorithm):
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.featurizer.parameters())+
                                           list(self.CateRelated.parameters())+
-                                        #   list(self.classifier.parameters())+
+                                          list(self.classifier.parameters())+
                                           list(self.EnvRelated.parameters())+
                                           list(self.d_classifier.parameters()), 
                                           lr=cfgs['learning_rate'],
