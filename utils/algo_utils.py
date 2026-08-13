@@ -405,6 +405,7 @@ class Proposed2(Algorithm):
         self.n_domains = cfgs['num_domains']
         self.lambd_orth = cfgs['Proposed2']['lambd_orth']
         self.lambd_domain = cfgs['Proposed2']['lambd_domain']
+        self.lambd_cross = cfgs['Proposed2']['lambd_cross']
         self.inner_steps = cfgs['Proposed2']['inner_steps']
 
         self.CateRelated = nn.Sequential(
@@ -421,23 +422,22 @@ class Proposed2(Algorithm):
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
-        self.classifier_per_d = Classifier(
-                                            self.featurizer.n_outputs,
+        self.classifier_per_d = [Classifier(self.featurizer.n_outputs,
                                             cfgs['num_classes'],
-                                            is_nonlinear=cfgs['nonlinear_classifier']
-                                        )
+                                            is_nonlinear=cfgs['nonlinear_classifier']) 
+                                for i in range(cfgs['num_train_domains'])]
 
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.featurizer.parameters())+
                                           list(self.CateRelated.parameters())+
-                                          
+                                        #   list(self.classifier.parameters())+
                                           list(self.EnvRelated.parameters())+
                                           list(self.d_classifier.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
 
-        self.optimizer_inner = torch.optim.Adam(self.classifier_per_d.parameters(), 
+        self.optimizer_inner = torch.optim.Adam([param for cl in self.classifier_per_d for param in cl.parameters()], 
                                                 lr=cfgs['learning_rate'],
                                                 weight_decay=cfgs['weight_decay'])        
         
@@ -464,6 +464,45 @@ class Proposed2(Algorithm):
         product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
         return (product ** 2).sum()
 
+    def cross_sample_loss(self, pred, all_y, all_d, reduction='sum', symmetric=True):
+        N, C = pred.shape
+
+        log_p = F.log_softmax(pred, dim=1)          # (N, C)
+        p = log_p.exp()                               # (N, C)
+
+        # same-class mask (upper triangle to match j = i+1 ... n)
+        same = all_y.unsqueeze(0) == all_y.unsqueeze(1)   # (N, N)
+        triu = torch.triu(torch.ones(N, N, device=pred.device, dtype=torch.bool), diagonal=1)
+        mask = same & triu                                # (N, N)
+
+        if not mask.any():
+            return pred.new_zeros(())
+
+        # pairwise KL: KL(p_i || p_j) = Σ_c p_i(c) (log p_i(c) - log p_j(c))
+        # log_p_i: (N, 1, C), log_p_j: (1, N, C)
+        log_p_i = log_p.unsqueeze(1)                      # (N, 1, C)
+        log_p_j = log_p.unsqueeze(0)                      # (1, N, C)
+        p_i = p.unsqueeze(1)                              # (N, 1, C)
+
+        kl_ij = (p_i * (log_p_i - log_p_j)).sum(dim=-1)   # (N, N)
+
+        if symmetric:
+            # also KL(p_j || p_i)
+            p_j = p.unsqueeze(0)
+            kl_ji = (p_j * (log_p_j - log_p_i)).sum(dim=-1)
+            kl = 0.5 * (kl_ij + kl_ji)
+        else:
+            kl = kl_ij
+
+        kl = kl[mask]
+
+        if reduction == "mean":
+            return kl.mean()
+        elif reduction == "sum":
+            return kl.sum()
+        else:
+            return kl
+
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -483,22 +522,34 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
+        loss_class = 0.0
+
         for i_dom, (x,y,_) in enumerate(minibatches):
-            self.classifier_per_d.load_state_dict(self.classifier.state_dict())
             x = x.to(device)
             y = y.to(device)
-            for step in range(self.inner_steps):
-                loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
+            loss_class_inner = self.loss_type(self.classifier_per_d[i_dom](self.CateRelated(self.featurizer(x))), y)
+            self.optimizer_inner.zero_grad()
+            loss_class_inner.backward()
+            self.optimizer_inner.step()
 
-                self.optimizer_inner.zero_grad()
-                loss_class_inner.backward()
-                self.optimizer_inner.step()
+               # for step in range(self.inner_steps):
+            #     loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
+            #     self.optimizer_inner.zero_grad()
+            #     loss_class_inner.backward()
+            #     self.optimizer_inner.step()
+        #     if i_dom == 0:
+        #         inner_weight = ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
+        #     else:
+        #         inner_weight += ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
+        # self.classifier.load_state_dict(inner_weight/len(minibatches))
+        # pred = self.classifier(z_cate)
 
-            if i_dom == 0:
-                inner_weight = ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
-            else:
-                inner_weight += ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
-        self.classifier.load_state_dict(inner_weight/len(minibatches))
+
+
+        # for cl in self.classifier_per_d:
+        #     loss_class += self.loss_type(cl(z_cate), all_y)
+        # loss_class /= len(minibatches)
+
 
         pred = self.classifier(z_cate)
         d_pred = self.d_classifier(z_env)
@@ -506,8 +557,9 @@ class Proposed2(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
+        loss_cross = self.cross_sample_loss()
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -517,6 +569,7 @@ class Proposed2(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
+                'loss_cross'    : loss_cross.item(),
                 }
 
     def predict(self, x):
