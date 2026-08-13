@@ -407,7 +407,7 @@ class Proposed2(Algorithm):
         self.n_domains = cfgs['num_domains']
         self.lambd_orth = cfgs['Proposed2']['lambd_orth']
         self.lambd_domain = cfgs['Proposed2']['lambd_domain']
-        self.lambd_cross = cfgs['Proposed2']['lambd_cross']
+        self.lambd_cross_sample = cfgs['Proposed2']['lambd_cross']
         # P2
         # self.inner_steps = cfgs['Proposed2']['inner_steps']
         self.n_train_domains = cfgs['Proposed2']['num_clusters']
