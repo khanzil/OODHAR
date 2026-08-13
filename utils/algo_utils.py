@@ -1324,45 +1324,53 @@ class CFSM(Algorithm):
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
     def cross_dom_loss(self, z_cate, all_y, all_d):
-        # z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
-        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
-        in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
-        cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
+        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        if not in_label_pair.any():
-            return torch.tensor(0, device=all_y.device)
+        proto = prototype[all_y]
+
+        sam_to_proto = z_cate - proto
+
+        return torch.mean(torch.norm(sam_to_proto, p=2, dim=1))
+
+        # # z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+        # # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        # self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        # in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
+        # cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
+
+        # if not in_label_pair.any():
+        #     return torch.tensor(0, device=all_y.device)
         
-        # threshold = torch.mean(cos_sim[cross_label_pair])
-        neg_pair = (cross_dom_pair) & (in_label_pair) # & (cos_sim < self.threshold)
+        # # threshold = torch.mean(cos_sim[cross_label_pair])
+        # neg_pair = (cross_dom_pair) & (in_label_pair) # & (cos_sim < self.threshold)
 
-        if not neg_pair.any():
-            return torch.tensor(0, device=all_y.device)
+        # if not neg_pair.any():
+        #     return torch.tensor(0, device=all_y.device)
 
+        # # idx_i, idx_j = torch.where(neg_pair)
+        # # z_pos = z_cate[idx_i]
+        # # z_neg = z_cate[idx_j]
+
+        # # for param in self.classifier.parameters():
+        # #     param.requires_grad = False
+
+        # # pred_Zs = self.classifier(z_pos-z_neg)
+
+        # # loss_cross_dom = F.cross_entropy(pred_Zs, torch.ones_like(pred_Zs)/pred_Zs.shape[-1])
+
+        # # for param in self.classifier.parameters():
+        # #     param.requires_grad = True
+
+        # # return loss_cross_dom
+        
         # idx_i, idx_j = torch.where(neg_pair)
         # z_pos = z_cate[idx_i]
         # z_neg = z_cate[idx_j]
+        # y_pos = all_y[idx_i]
 
-        # for param in self.classifier.parameters():
-        #     param.requires_grad = False
+        # prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        # pred_Zs = self.classifier(z_pos-z_neg)
-
-        # loss_cross_dom = F.cross_entropy(pred_Zs, torch.ones_like(pred_Zs)/pred_Zs.shape[-1])
-
-        # for param in self.classifier.parameters():
-        #     param.requires_grad = True
-
-        # return loss_cross_dom
-        
-        idx_i, idx_j = torch.where(neg_pair)
-        z_pos = z_cate[idx_i]
-        z_neg = z_cate[idx_j]
-        y_pos = all_y[idx_i]
-
-        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
-
-        return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')/z_cate.shape[0]
+        # return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')/z_cate.shape[0]
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
