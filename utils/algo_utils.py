@@ -522,17 +522,7 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
-        loss_class = 0.0
-
-        for i_dom, (x,y,_) in enumerate(minibatches):
-            x = x.to(device)
-            y = y.to(device)
-            loss_class_inner = self.loss_type(self.classifier_per_d[i_dom](self.CateRelated(self.featurizer(x))), y)
-            self.optimizer_inner.zero_grad()
-            loss_class_inner.backward()
-            self.optimizer_inner.step()
-
-               # for step in range(self.inner_steps):
+        # for step in range(self.inner_steps):
             #     loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
             #     self.optimizer_inner.zero_grad()
             #     loss_class_inner.backward()
@@ -545,19 +535,13 @@ class Proposed2(Algorithm):
         # pred = self.classifier(z_cate)
 
 
-
-        # for cl in self.classifier_per_d:
-        #     loss_class += self.loss_type(cl(z_cate), all_y)
-        # loss_class /= len(minibatches)
-
-
         pred = self.classifier(z_cate)
         d_pred = self.d_classifier(z_env)
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_sample_loss()
+        loss_cross = self.cross_sample_loss(pred, all_y, all_d)
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
