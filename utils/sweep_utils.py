@@ -50,4 +50,4 @@ def get_random_search_configs(cfgs):
         cfgs['Proposed2']['inner_steps'] = np.random.randint(1,6)
 
         cfgs['Proposed2']['num_cluster'] = np.random.randint(3,11)
-        cfgs['Proposed2']['reassign_ratio'] = np.random.randint(0.01,0.2)
+        cfgs['Proposed2']['reassign_ratio'] = np.random.uniform(0.01,0.2)
