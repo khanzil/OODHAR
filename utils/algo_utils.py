@@ -5,7 +5,8 @@ import torch.autograd as autograd
 import numpy as np
 import os
 from tqdm import tqdm
-from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict, LinearProj
+from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
+from sklearn.cluster import MiniBatchKMeans
 import json
 import time
 import copy
@@ -406,7 +407,17 @@ class Proposed2(Algorithm):
         self.lambd_orth = cfgs['Proposed2']['lambd_orth']
         self.lambd_domain = cfgs['Proposed2']['lambd_domain']
         self.lambd_cross = cfgs['Proposed2']['lambd_cross']
-        self.inner_steps = cfgs['Proposed2']['inner_steps']
+        # P2
+        # self.inner_steps = cfgs['Proposed2']['inner_steps']
+        self.n_train_domains = cfgs['num_train_domains']
+
+        self.mbk = MiniBatchKMeans(
+            n_clusters=self.n_train_domains,
+            batch_size=16*6,
+            reassignment_ratio=0.01,
+            random_state=0,
+            n_init=3,
+        )
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -422,11 +433,11 @@ class Proposed2(Algorithm):
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
-        self.classifier_per_d = [Classifier(self.featurizer.n_outputs,
-                                            cfgs['num_classes'],
-                                            is_nonlinear=cfgs['nonlinear_classifier']) 
-                                for i in range(cfgs['num_train_domains'])]
-
+        # P2
+        # self.classifier_per_d = Classifier(self.featurizer.n_outputs,
+        #                                    cfgs['num_classes'],
+        #                                    is_nonlinear=cfgs['nonlinear_classifier']) 
+        #                         
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.featurizer.parameters())+
@@ -437,9 +448,10 @@ class Proposed2(Algorithm):
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
 
-        self.optimizer_inner = torch.optim.Adam([param for cl in self.classifier_per_d for param in cl.parameters()], 
-                                                lr=cfgs['learning_rate'],
-                                                weight_decay=cfgs['weight_decay'])        
+        # P2
+        # self.optimizer_inner = torch.optim.Adam([param for cl in self.classifier_per_d for param in cl.parameters()], 
+        #                                         lr=cfgs['learning_rate'],
+        #                                         weight_decay=cfgs['weight_decay'])        
         
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
@@ -457,37 +469,61 @@ class Proposed2(Algorithm):
             self.CateRelated.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
-            for classifier in self.classifier_per_d:
-                classifier.cuda()
+
+            # P2
+            # for classifier in self.classifier_per_d:
+            #     classifier.cuda()
 
     def orth_loss(self):
         product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
         return (product ** 2).sum()
 
-    def cross_sample_loss(self, pred, all_y, all_d, reduction='sum', symmetric=True):
+    @torch.no_grad()
+    def get_pseudo_label(self, z_env):
+        z = z_env.detach().cpu().numpy()
+        z = z / (np.linalg.norm(z, axis=1, keepdims=True) + 1e-10)
+        self.mbk.partial_fit(z)
+
+        pseudo_labels = self.mbk.predict(z)
+        return torch.from_numpy(pseudo_labels).long()
+
+
+    def fix_empty_clusters(self, all_d, z_env):
+        counts = np.bincount(all_d, minlength=self.n_train_domains)
+        empty = np.where(counts == 0)[0]
+        if len(empty) == 0:
+            return all_d
+
+        for e in empty:
+            largest = counts.argmax()
+            idx = np.where(all_d == largest)[0]
+            center = z_env[idx].mean(axis=0, keepdims=True)
+            dist = ((z_env[idx] - center) ** 2).sum(axis=1)
+            far = idx[dist.argmax()]
+            all_d[far] = e
+            counts = np.bincount(all_d, minlength=self.n_train_domains)
+        return all_d
+
+    def kl_loss(self, pred, all_y, all_d, reduction='sum', symmetric=True):
         N, C = pred.shape
 
-        log_p = F.log_softmax(pred, dim=1)          # (N, C)
-        p = log_p.exp()                               # (N, C)
+        log_p = F.log_softmax(pred, dim=1)
+        p = log_p.exp()
 
-        # same-class mask (upper triangle to match j = i+1 ... n)
-        same = all_y.unsqueeze(0) == all_y.unsqueeze(1)   # (N, N)
+        same = all_y.unsqueeze(0) == all_y.unsqueeze(1)
         triu = torch.triu(torch.ones(N, N, device=pred.device, dtype=torch.bool), diagonal=1)
-        mask = same & triu                                # (N, N)
+        mask = same & triu
 
         if not mask.any():
             return pred.new_zeros(())
 
-        # pairwise KL: KL(p_i || p_j) = Σ_c p_i(c) (log p_i(c) - log p_j(c))
-        # log_p_i: (N, 1, C), log_p_j: (1, N, C)
-        log_p_i = log_p.unsqueeze(1)                      # (N, 1, C)
-        log_p_j = log_p.unsqueeze(0)                      # (1, N, C)
-        p_i = p.unsqueeze(1)                              # (N, 1, C)
+        log_p_i = log_p.unsqueeze(1)
+        log_p_j = log_p.unsqueeze(0)
+        p_i = p.unsqueeze(1)
 
-        kl_ij = (p_i * (log_p_i - log_p_j)).sum(dim=-1)   # (N, N)
+        kl_ij = (p_i * (log_p_i - log_p_j)).sum(dim=-1)
 
         if symmetric:
-            # also KL(p_j || p_i)
             p_j = p.unsqueeze(0)
             kl_ji = (p_j * (log_p_j - log_p_i)).sum(dim=-1)
             kl = 0.5 * (kl_ij + kl_ji)
@@ -503,6 +539,31 @@ class Proposed2(Algorithm):
         else:
             return kl
 
+    def cross_sample_loss(self, z_cate, all_y, all_d):
+        z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        pos_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
+
+        in_dom_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (~self_pair)
+
+        if not pos_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        threshold = torch.mean(cos_sim[pos_pair]) * self.theta
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
+
+        if not neg_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        idx_i, idx_j = torch.where(neg_pair)
+        z_pos = z_cate_norm[idx_i]
+        z_neg = z_cate_norm[idx_j]
+        y_pos = all_y[idx_i]
+
+        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
+
+        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -512,6 +573,7 @@ class Proposed2(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
+        all_d = self.get_pseudo_label(z_env)
 
         device = 'cuda' if self.cuda else 'cpu'
         all_x = all_x.to(device, non_blocking=True)
@@ -522,6 +584,7 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
+        # P2
         # for step in range(self.inner_steps):
             #     loss_class_inner = self.loss_type(self.classifier_per_d(self.CateRelated(self.featurizer(x))), y)
             #     self.optimizer_inner.zero_grad()
@@ -532,8 +595,6 @@ class Proposed2(Algorithm):
         #     else:
         #         inner_weight += ParamDict(copy.deepcopy(self.classifier_per_d.state_dict()))
         # self.classifier.load_state_dict(inner_weight/len(minibatches))
-        # pred = self.classifier(z_cate)
-
 
         pred = self.classifier(z_cate)
         d_pred = self.d_classifier(z_env)
@@ -541,7 +602,7 @@ class Proposed2(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_sample_loss(pred, all_y, all_d)
+        loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
