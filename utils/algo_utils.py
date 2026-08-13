@@ -1359,18 +1359,16 @@ class CFSM(Algorithm):
 
     def cross_dom_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
         in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
-        cross_label_pair = (all_y.unsqueeze(0) != all_y.unsqueeze(1))
-
         cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
 
         if not in_label_pair.any():
             return torch.tensor(0, device=all_y.device)
         
-        threshold = torch.mean(cos_sim[cross_label_pair])
-        neg_pair = (cos_sim < threshold) & (cross_dom_pair) & (in_label_pair)
+        # threshold = torch.mean(cos_sim[cross_label_pair])
+        neg_pair = (cross_dom_pair) & (in_label_pair)
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
@@ -1421,8 +1419,8 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross_dom'    : loss_cross_dom.item(),
-                'loss_cross_cl'    : loss_cross_sample.item(),
+                'loss_cross_dom': loss_cross_dom.item(),
+                'loss_cross_cl' : loss_cross_sample.item(),
                 }
 
     def predict(self, x):
