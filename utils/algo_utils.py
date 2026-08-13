@@ -448,7 +448,6 @@ class Proposed2(Algorithm):
         # self.classifier_per_d = Classifier(self.featurizer.n_outputs,
         #                                    cfgs['num_classes'],
         #                                    is_nonlinear=cfgs['nonlinear_classifier']) 
-        #                         
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
         self.optimizer = torch.optim.Adam(list(self.network.parameters())+
@@ -601,7 +600,7 @@ class Proposed2(Algorithm):
         if step >= self.iter_kl:
             loss_kl = self.kl_loss(pred, all_y, all_d)
         else:
-            loss_kl = 0.0
+            loss_kl = torch.tensor(0.0, device=all_y.device)
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_kl * loss_kl
 
@@ -1366,7 +1365,7 @@ class CFSM(Algorithm):
 
     def cross_dom_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
         in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
         cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
@@ -1375,7 +1374,7 @@ class CFSM(Algorithm):
             return torch.tensor(0, device=all_y.device)
         
         # threshold = torch.mean(cos_sim[cross_label_pair])
-        neg_pair = (cross_dom_pair) & (in_label_pair)
+        neg_pair = (cross_dom_pair) & (in_label_pair) & (cos_sim < self.threshold)
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
