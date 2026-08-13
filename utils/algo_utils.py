@@ -411,6 +411,7 @@ class Proposed2(Algorithm):
         # self.inner_steps = cfgs['Proposed2']['inner_steps']
         self.n_train_domains = cfgs['num_train_domains']
         self.lambd_kl = cfgs['Proposed2']['lambd_kl']
+        self.iter_kl = cfgs['Proposed2']['iter_kl']
         self.theta = cfgs['Proposed2']['theta']
 
         # self.mbk = MiniBatchKMeans(
@@ -597,7 +598,10 @@ class Proposed2(Algorithm):
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
         # loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
-        loss_kl = self.kl_loss(pred, all_y, all_d)
+        if step >= self.iter_kl:
+            loss_kl = self.kl_loss(pred, all_y, all_d)
+        else:
+            loss_kl = 0.0
 
         loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_kl * loss_kl
 

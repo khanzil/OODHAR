@@ -46,6 +46,7 @@ def get_random_search_configs(cfgs):
         cfgs['Proposed2']['lambd_domain'] = 10**np.random.uniform(0,1)
         cfgs['Proposed2']['lambd_orth'] = 10**np.random.uniform(0,1)
         cfgs['Proposed2']['lambd_cross'] = 10**np.random.uniform(0,1)
-        cfgs['Proposed2']['lambd_kl'] = 10**np.random.uniform(0,1)
+        cfgs['Proposed2']['lambd_kl'] = 5**np.random.uniform(0,1)
+        cfgs['Proposed2']['iter_kl'] = int(np.random.uniform(500,700))
         cfgs['Proposed2']['theta'] = np.random.uniform(0.1,1)
         cfgs['Proposed2']['inner_steps'] = np.random.randint(1,6)
