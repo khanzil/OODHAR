@@ -433,6 +433,14 @@ class Proposed2(Algorithm):
             nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
         )
 
+        self.ClassPrototype = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.classifier[-1].weight.shape[1],self.featurizer.n_outputs), # classifier.weight have shape (n_class, n_hidden)
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+        )
+
+
         # P2
         # self.classifier_per_d = Classifier(self.featurizer.n_outputs,
         #                                    cfgs['num_classes'],
@@ -440,11 +448,10 @@ class Proposed2(Algorithm):
         #                         
 
         self.network = nn.Sequential(self.featurizer, self.CateRelated, self.classifier)
-        self.optimizer = torch.optim.Adam(list(self.featurizer.parameters())+
-                                          list(self.CateRelated.parameters())+
-                                          list(self.classifier.parameters())+
+        self.optimizer = torch.optim.Adam(list(self.network.parameters())+
                                           list(self.EnvRelated.parameters())+
-                                          list(self.d_classifier.parameters()), 
+                                          list(self.d_classifier.parameters())+
+                                          list(self.ClassPrototype.parameters()), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
 
@@ -469,7 +476,7 @@ class Proposed2(Algorithm):
             self.CateRelated.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
-
+            self.ClassPrototype.cuda()
             # P2
             # for classifier in self.classifier_per_d:
             #     classifier.cuda()
