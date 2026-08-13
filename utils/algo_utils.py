@@ -1334,19 +1334,28 @@ class CFSM(Algorithm):
             return torch.tensor(0, device=all_y.device)
         
         # threshold = torch.mean(cos_sim[cross_label_pair])
-        neg_pair = (cross_dom_pair) & (in_label_pair) & (cos_sim < self.threshold)
+        neg_pair = (cross_dom_pair) & (in_label_pair) # & (cos_sim < self.threshold)
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
-        
+
         idx_i, idx_j = torch.where(neg_pair)
-        z_pos = z_cate_norm[idx_i]
-        z_neg = z_cate_norm[idx_j]
-        y_pos = all_y[idx_i]
+        z_pos = z_cate[idx_i]
+        z_neg = z_cate[idx_j]
 
-        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
+        for param in self.classifier.parameters():
+            param.requires_grad = False
 
-        return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')
+        pred_Zs = self.classifier(z_pos-z_neg)
+        
+        # idx_i, idx_j = torch.where(neg_pair)
+        # z_pos = z_cate_norm[idx_i]
+        # z_neg = z_cate_norm[idx_j]
+        # y_pos = all_y[idx_i]
+
+        # prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
+
+        # return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1372,10 +1381,10 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
+        # loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_dom * loss_cross_dom + self.lambd_cross_sample * loss_cross_sample
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1385,8 +1394,8 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross_dom': loss_cross_dom.item(),
-                'loss_cross_cl' : loss_cross_sample.item(),
+                # 'loss_cross_dom': loss_cross_dom.item(),
+                'loss_cross_sa' : loss_cross_sample.item(),
                 }
 
     def predict(self, x):
