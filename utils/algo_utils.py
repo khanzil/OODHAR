@@ -1324,8 +1324,8 @@ class CFSM(Algorithm):
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
     def cross_dom_loss(self, z_cate, all_y, all_d):
-        z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        # z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+        # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
         in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
         cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
@@ -1362,7 +1362,7 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')
+        return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')/z_cate.shape[0]
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1391,8 +1391,7 @@ class CFSM(Algorithm):
         loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample
-        + self.lambd_cross_dom * loss_cross_dom
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_cross_dom * loss_cross_dom
 
         self.optimizer.zero_grad()
         loss.backward()
