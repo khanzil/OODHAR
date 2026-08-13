@@ -581,7 +581,6 @@ class Proposed2(Algorithm):
         all_x = torch.cat([x for x,_,_ in minibatches])
         all_y = torch.cat([y for _,y,_ in minibatches])
         all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
-        all_d = self.get_pseudo_label(z_env)
 
         device = 'cuda' if self.cuda else 'cpu'
         all_x = all_x.to(device, non_blocking=True)
@@ -591,6 +590,7 @@ class Proposed2(Algorithm):
         all_z = self.featurizer(all_x)
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
+        all_d = self.get_pseudo_label(z_env)
 
         # P2
         # for step in range(self.inner_steps):
