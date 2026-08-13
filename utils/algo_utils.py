@@ -399,7 +399,8 @@ class Proposed2(Algorithm):
 
         self.d_classifier = Classifier(
             self.featurizer.n_outputs,
-            cfgs['num_train_domains'],
+            # cfgs['num_train_domains'],
+            cfgs['Proposed2']['num_clusters'],
             cfgs['Proposed2']['d_nonlinear_classifier']
         )
 
@@ -409,18 +410,16 @@ class Proposed2(Algorithm):
         self.lambd_cross = cfgs['Proposed2']['lambd_cross']
         # P2
         # self.inner_steps = cfgs['Proposed2']['inner_steps']
-        self.n_train_domains = cfgs['num_train_domains']
-        self.lambd_kl = cfgs['Proposed2']['lambd_kl']
-        self.iter_kl = cfgs['Proposed2']['iter_kl']
+        self.n_train_domains = cfgs['Proposed2']['num_clusters']
         self.theta = cfgs['Proposed2']['theta']
 
-        # self.mbk = MiniBatchKMeans(
-        #     n_clusters=self.n_train_domains,
-        #     batch_size=16*6,
-        #     reassignment_ratio=0.01,
-        #     random_state=0,
-        #     n_init=3,
-        # )
+        self.mbk = MiniBatchKMeans(
+            n_clusters=self.n_train_domains,
+            batch_size=16*6,
+            reassignment_ratio=cfgs['Proposed2']['reassign_ratio'],
+            random_state=0,
+            n_init=3,
+        )
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -496,42 +495,6 @@ class Proposed2(Algorithm):
         pseudo_labels = self.mbk.predict(z)
         return torch.from_numpy(pseudo_labels).long().to(device=z_env.device)
 
-
-    def kl_loss(self, pred, all_y, all_d, reduction='sum', symmetric=True):
-        N, C = pred.shape
-
-        log_p = F.log_softmax(pred, dim=1)
-        p = log_p.exp()
-
-        same = all_y.unsqueeze(0) == all_y.unsqueeze(1)
-        triu = torch.triu(torch.ones(N, N, device=pred.device, dtype=torch.bool), diagonal=1)
-        mask = same & triu
-
-        if not mask.any():
-            return pred.new_zeros(())
-
-        log_p_i = log_p.unsqueeze(1)
-        log_p_j = log_p.unsqueeze(0)
-        p_i = p.unsqueeze(1)
-
-        kl_ij = (p_i * (log_p_i - log_p_j)).sum(dim=-1)
-
-        if symmetric:
-            p_j = p.unsqueeze(0)
-            kl_ji = (p_j * (log_p_j - log_p_i)).sum(dim=-1)
-            kl = 0.5 * (kl_ij + kl_ji)
-        else:
-            kl = kl_ij
-
-        kl = kl[mask]
-
-        if reduction == "mean":
-            return kl.mean()
-        elif reduction == "sum":
-            return kl.sum()
-        else:
-            return kl
-
     def cross_sample_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
         cos_sim = torch.inner(z_cate_norm, z_cate_norm)
@@ -576,7 +539,7 @@ class Proposed2(Algorithm):
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
 
-        # all_d = self.get_pseudo_label(z_env)
+        all_d = self.get_pseudo_label(z_env)
 
         # P2
         # for step in range(self.inner_steps):
@@ -596,13 +559,10 @@ class Proposed2(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        # loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
-        if step >= self.iter_kl:
-            loss_kl = self.kl_loss(pred, all_y, all_d)
-        else:
-            loss_kl = torch.tensor(0.0, device=all_y.device)
+        loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_kl * loss_kl
+
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -612,7 +572,7 @@ class Proposed2(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_kl'       : loss_kl.item(),
+                'loss_cross'     : loss_cross.item(),
                 }
 
     def predict(self, x):
