@@ -493,7 +493,7 @@ class Proposed2(Algorithm):
         self.mbk.partial_fit(z)
 
         pseudo_labels = self.mbk.predict(z)
-        return torch.from_numpy(pseudo_labels).long()
+        return torch.from_numpy(pseudo_labels).long().to(device=z_env.device)
 
 
     def fix_empty_clusters(self, all_d, z_env):
