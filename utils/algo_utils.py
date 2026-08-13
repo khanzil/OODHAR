@@ -496,23 +496,6 @@ class Proposed2(Algorithm):
         return torch.from_numpy(pseudo_labels).long().to(device=z_env.device)
 
 
-    def fix_empty_clusters(self, all_d, z_env):
-        counts = np.bincount(all_d, minlength=self.n_train_domains)
-        empty = np.where(counts == 0)[0]
-        if len(empty) == 0:
-            return all_d
-
-        for e in empty:
-            largest = counts.argmax()
-            idx = np.where(all_d == largest)[0]
-            center = z_env[idx].mean(axis=0, keepdims=True)
-            dist = ((z_env[idx] - center) ** 2).sum(axis=1)
-            far = idx[dist.argmax()]
-            all_d[far] = e
-            counts = np.bincount(all_d, minlength=self.n_train_domains)
-        return all_d
-
-
     def kl_loss(self, pred, all_y, all_d, reduction='sum', symmetric=True):
         N, C = pred.shape
 
@@ -1294,7 +1277,8 @@ class CFSM(Algorithm):
         self.theta = cfgs['CFSM']['theta']
         self.lambd_orth = cfgs['CFSM']['lambd_orth']
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
-        self.lambd_cross = cfgs['CFSM']['lambd_cross']
+        self.lambd_cross_dom = cfgs['CFSM']['lambd_cross_dom']
+        self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -1424,9 +1408,10 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_dom_loss(z_cate, all_y, all_d)
+        loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
+        loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_dom * loss_cross_dom + self.lambd_cross_sample * loss_cross_sample
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1436,7 +1421,8 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross'    : loss_cross.item(),
+                'loss_cross_dom'    : loss_cross_dom.item(),
+                'loss_cross_sample'    : loss_cross_sample.item(),
                 }
 
     def predict(self, x):
