@@ -1385,7 +1385,7 @@ class CFSM(Algorithm):
         if not in_label_pair.any():
             return torch.tensor(0, device=all_y.device)
         
-        threshold = torch.mean(cos_sim[cross_label_pair]) / self.theta
+        threshold = torch.mean(cos_sim[cross_label_pair])
         neg_pair = (cos_sim < threshold) & (cross_dom_pair) & (in_label_pair)
 
         if not neg_pair.any():
@@ -1399,8 +1399,6 @@ class CFSM(Algorithm):
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
         return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')
-
-
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
