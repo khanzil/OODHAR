@@ -410,15 +410,16 @@ class Proposed2(Algorithm):
         # P2
         # self.inner_steps = cfgs['Proposed2']['inner_steps']
         self.n_train_domains = cfgs['num_train_domains']
+        self.lambd_kl = cfgs['Proposed2']['lambd_kl']
         self.theta = cfgs['Proposed2']['theta']
 
-        self.mbk = MiniBatchKMeans(
-            n_clusters=self.n_train_domains,
-            batch_size=16*6,
-            reassignment_ratio=0.01,
-            random_state=0,
-            n_init=3,
-        )
+        # self.mbk = MiniBatchKMeans(
+        #     n_clusters=self.n_train_domains,
+        #     batch_size=16*6,
+        #     reassignment_ratio=0.01,
+        #     random_state=0,
+        #     n_init=3,
+        # )
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -574,7 +575,8 @@ class Proposed2(Algorithm):
         all_z = self.featurizer(all_x)
         z_cate = self.CateRelated(all_z)
         z_env = self.EnvRelated(all_z)
-        all_d = self.get_pseudo_label(z_env)
+
+        # all_d = self.get_pseudo_label(z_env)
 
         # P2
         # for step in range(self.inner_steps):
@@ -594,9 +596,10 @@ class Proposed2(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
+        # loss_cross = self.cross_sample_loss(z_cate, all_y, all_d)
+        loss_kl = self.kl_loss(pred, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross * loss_cross
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_kl * loss_kl
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -606,7 +609,7 @@ class Proposed2(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross'    : loss_cross.item(),
+                'loss_kl'       : loss_kl.item(),
                 }
 
     def predict(self, x):

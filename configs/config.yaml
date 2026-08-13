@@ -58,6 +58,7 @@ Proposed2:
   lambd_domain: 0.1
   lambd_orth: 0.1
   lambd_cross: 0.1
+  lambd_kl: 0.1
   theta: 1
   inner_steps: 2
 
