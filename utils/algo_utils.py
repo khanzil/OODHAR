@@ -1422,7 +1422,7 @@ class CFSM(Algorithm):
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
                 'loss_cross_dom'    : loss_cross_dom.item(),
-                'loss_cross_sample'    : loss_cross_sample.item(),
+                'loss_cross_cl'    : loss_cross_sample.item(),
                 }
 
     def predict(self, x):
