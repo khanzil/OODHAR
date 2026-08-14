@@ -1581,8 +1581,8 @@ class SAM(Algorithm):
         # 1. eps(w) = rho * g(w) / g(w).norm(2)
         #           = (rho / g(w).norm(2)) * g(w)
         grad_w = autograd.grad(loss_class, self.network.parameters())
-        scale = self.rho / torch.norm(grad_w, p=2)
-        eps = [g * scale for g in grad_w]
+        grad_w_norm = torch.cat([x.flatten() for x in grad_w]).norm(2)
+        eps = [g * self.rho / grad_w_norm for g in grad_w]
 
         # 2. w' = w + eps(w)
         with torch.no_grad():
