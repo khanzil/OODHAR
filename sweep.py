@@ -9,7 +9,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_trials', type=int, default=3, help='Number of trials for each algo, affect how data is divided')
     parser.add_argument('--trial_start', type=int, default=0, help='To do more trial if needed')
     parser.add_argument('--n_searchs', type=int, default=4, help='Number of hyperparameter searchs')
-    parser.add_argument('--search_start', type=int, default=0, help='To do more search if needed')
+    parser.add_argument('--search_start', type=int, default=1, help='To do more search if needed')
     parser.add_argument('--algo', type=str)
     parser.add_argument('--featurizer', type=str)
     parser.add_argument('--num_workers', type=int)
@@ -24,9 +24,9 @@ if __name__ == '__main__':
     # create a list of cfg to run each in a subprocess
     cfg_yaml_list = []
     
-    for seed in range(args.n_trials):
+    for seed in range(args.trial_start, args.n_trials):
         # only support single test domain for now, this seed controls RNG for dataset divison
-        for search in range(1,args.n_searchs+1):
+        for search in range(args.search_start,args.n_searchs+1):
             cfg_yaml_list.append((f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml",seed,search))
             # create config_{i}.yaml for each cfg
             cfgs['train_id'] = f"seed{seed}_search{search}_{args.algo}_{args.featurizer}"
