@@ -672,7 +672,7 @@ class GroupDRO(Algorithm):
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
-            self.q.to('cuda')
+            self.q = self.q.to('cuda')
 
 
     def update(self, minibatches, step, unlabeled=None):
