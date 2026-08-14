@@ -1397,7 +1397,14 @@ class Fishr(Algorithm):
         self.optimizer.zero_grad()
         loss = self.bce_extended(logits, y).sum()
         with backpack(BatchGrad()):
-            loss.backward(retain_graph=True, create_graph=True)
+            grads = torch.autograd.grad(
+            outputs=loss,
+            inputs=list(self.classifier.parameters()),
+            retain_graph=True,
+            create_graph=True,
+            allow_unused=True
+        )
+            # loss.backward(retain_graph=True, create_graph=True)
 
         # compute individual grads for all samples across all domains simultaneously
         dict_grads = OrderedDict([(name, weights.grad_batch.clone().view(weights.grad_batch.size(0), -1))
