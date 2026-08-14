@@ -15,6 +15,7 @@ algos_dict = {
     'VRex'      : VRex,
     'CFSM'      : CFSM,
     'GroupDRO'  : GroupDRO,
+    'Fihsr'     : Fishr,
     'Proposed1' : Proposed1,
     'Proposed2' : Proposed2,
 }

@@ -5,11 +5,13 @@ import torch.autograd as autograd
 import numpy as np
 import os
 from tqdm import tqdm
-from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict
+from utils.networks_utils import Featurizer, Classifier, GRL, ParamDict,MovingAverage, OrderedDict, l2_between_dicts
 from sklearn.cluster import MiniBatchKMeans
 import json
 import time
 import copy
+from backpack import backpack, extend
+from backpack.extensions import BatchGrad
 
 
 class Algorithm():
@@ -1342,6 +1344,199 @@ class Fish(Algorithm):
         np.random.set_state(state_dict['np_random'])
         return step
 
+class Fishr(Algorithm):
+    def __init__ (self, cfgs, args):
+        self.cuda = args.cuda
+        self.featurizer = Featurizer(cfgs)
+        self.classifier = extend(
+            Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            cfgs['nonlinear_classifier']
+        ))
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+
+        self.n_domains = cfgs['num_domains']
+        self.n_train_domains = cfgs['num_train_domains']
+
+        self.ema_per_domain = [
+            MovingAverage(ema=cfgs['Fishr']['ema'], oneminusema_correction=True)
+            for _ in range(self.n_train_domains)
+        ]
+
+        self.learning_rate = cfgs['learning_rate']
+        self.weight_decay = cfgs['weight_decay']
+        self.iter = cfgs['Fishr']['iter']
+        self.lambd = cfgs['Fishr']['lambd']
+
+        self._init_optimizer()
+
+        if cfgs['loss_type'] == 'CrossEntropy':
+            self.loss_type = nn.CrossEntropyLoss()
+            self.bce_extended = extend(nn.CrossEntropyLoss(reduction='none'))
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
+       
+        if self.cuda:
+            self.featurizer.cuda()
+            self.classifier.cuda()
+
+    def _init_optimizer(self):
+        self.optimizer = torch.optim.Adam(self.network.parameters(),
+            lr=self.learning_rate,
+            weight_decay=self.weight_decay,
+        )
+
+    def compute_fishr_penalty(self, all_logits, all_y, len_minibatches):
+        dict_grads = self._get_grads(all_logits, all_y)
+        grads_var_per_domain = self._get_grads_var_per_domain(dict_grads, len_minibatches)
+        return self._compute_distance_grads_var(grads_var_per_domain)
+
+    def _get_grads(self, logits, y):
+        self.optimizer.zero_grad()
+        loss = self.bce_extended(logits, y).sum()
+        with backpack(BatchGrad()):
+            loss.backward(
+                inputs=list(self.classifier.parameters()), retain_graph=True, create_graph=True
+            )
+
+        # compute individual grads for all samples across all domains simultaneously
+        dict_grads = OrderedDict([(name, weights.grad_batch.clone().view(weights.grad_batch.size(0), -1))
+                for name, weights in self.classifier.named_parameters()])
+        return dict_grads
+
+    def _get_grads_var_per_domain(self, dict_grads, len_minibatches):
+        # grads var per domain
+        grads_var_per_domain = [{} for _ in range(self.n_train_domains)]
+        for name, _grads in dict_grads.items():
+            all_idx = 0
+            for domain_id, bsize in enumerate(len_minibatches):
+                env_grads = _grads[all_idx:all_idx + bsize]
+                all_idx += bsize
+                env_mean = env_grads.mean(dim=0, keepdim=True)
+                env_grads_centered = env_grads - env_mean
+                grads_var_per_domain[domain_id][name] = (env_grads_centered).pow(2).mean(dim=0)
+
+        # moving average
+        for domain_id in range(self.n_train_domains):
+            grads_var_per_domain[domain_id] = self.ema_per_domain[domain_id].update(grads_var_per_domain[domain_id])
+
+        return grads_var_per_domain
+
+    def _compute_distance_grads_var(self, grads_var_per_domain):
+
+        # compute gradient variances averaged across domains
+        grads_var = OrderedDict([(name,torch.stack([
+                                    grads_var_per_domain[domain_id][name] 
+                                    for domain_id in range(self.n_train_domains)],dim=0).mean(dim=0))
+                                for name in grads_var_per_domain[0].keys()])
+
+        penalty = 0
+        for domain_id in range(self.n_train_domains):
+            penalty += l2_between_dicts(grads_var_per_domain[domain_id], grads_var)
+        return penalty / self.n_train_domains
+
+
+    def update(self, minibatches, step, unlabeled=None):
+        self.featurizer.train()
+        self.classifier.train()
+
+        all_x = torch.cat([x for x,_,_ in minibatches])
+        all_y = torch.cat([y for _,y,_ in minibatches])
+        len_minibatches = [x.shape[0] for x,y,_ in minibatches]
+
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
+
+        preds = self.predict(all_x)
+        loss_class = self.loss_type(preds, all_y)
+
+        penalty_weight = 0
+
+        if step >= self.iter:
+            penalty_weight = self.lambd
+            penalty = self.compute_fishr_penalty(preds, all_y, len_minibatches)
+
+            if step == self.iter != 0:
+                # Reset Adam as in IRM or V-REx, because it may not like the sharp jump in
+                # gradient magnitudes that happens at this step.
+                self._init_optimizer()
+
+
+        loss = loss_class + penalty_weight * penalty
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss_class' : loss_class.item(),
+                'loss_fishr' : penalty.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+    def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
+        self.featurizer.eval()
+        self.classifier.eval()
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
+
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
+
+                pred = self.predict(all_x)
+                _, pred = pred.max(1) # same as np.argmax()
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+
+
+        self.featurizer.train()
+        self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
+
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
+
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
+
+        state_dict = {
+            'step': step,
+            'network': self.network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'rng': torch.get_rng_state(),
+            'np_random': np.random.get_state(),
+        }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)        
+
+    def load_ckpt(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, weights_only=False)
+        step = state_dict['step']
+        self.network.load_state_dict(state_dict['network'])
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        torch.set_rng_state(state_dict['rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        np.random.set_state(state_dict['np_random'])
+        return step
 
 
 class CFSM(Algorithm):

@@ -50,6 +50,10 @@ CFSM:
   theta: 1
 GroupDRO:
   theta: 1
+Fishr:
+  iter: 500
+  lambd: 1
+  ema: 0.9
 Proposed1:
   loss_type_d: CrossEntropy
   d_nonlinear_classifier: true
