@@ -16,6 +16,7 @@ algos_dict = {
     'CFSM'      : CFSM,
     'GroupDRO'  : GroupDRO,
     'Fishr'     : Fishr,
+    'SAM'       : SAM,
     'Proposed1' : Proposed1,
     'Proposed2' : Proposed2,
 }

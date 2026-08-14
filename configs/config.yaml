@@ -54,6 +54,8 @@ Fishr:
   iter: 500
   lambd: 1
   ema: 0.9
+SAM:
+  rho:
 Proposed1:
   loss_type_d: CrossEntropy
   d_nonlinear_classifier: true

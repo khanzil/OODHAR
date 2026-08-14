@@ -42,6 +42,9 @@ def get_random_search_configs(cfgs):
     elif cfgs['algorithm'] == 'GroupDRO':
         cfgs['GroupDRO']['theta'] = 10**np.random.uniform(-3,-1)
 
+    elif cfgs['algorithm'] == 'SAM':
+        cfgs['SAM']['rho'] = 10**np.random.uniform(-2,-1)
+
     elif cfgs['algorithm'] == 'Fishr':
         cfgs['Fishr']['iter'] = int(np.random.uniform(500,700))
         cfgs['Fishr']['lambd'] = 10**np.random.uniform(1,4)
