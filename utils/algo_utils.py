@@ -644,6 +644,124 @@ class Proposed2(Algorithm):
         return step
 
 
+class GroupDRO(Algorithm):
+    def __init__ (self, cfgs, args):
+        self.cuda = args.cuda
+        self.featurizer = Featurizer(cfgs)
+        self.classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            cfgs['nonlinear_classifier']
+        )
+
+        self.n_domains = cfgs['num_domains']
+
+        self.q = torch.ones(cfgs['num_train_domains'])
+        self.theta = cfgs['GroupDRO']['theta']
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(self.network.parameters(), 
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
+        
+        if cfgs['loss_type'] == 'CrossEntropy':
+            self.loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
+       
+        if self.cuda:
+            self.featurizer.cuda()
+            self.classifier.cuda()
+            self.q.cuda()
+
+    def update(self, minibatches, step, unlabeled=None):
+        self.featurizer.train()
+        self.classifier.train()
+
+        device = 'cuda' if self.cuda else 'cpu'
+        losses = torch.zeros(len(minibatches)).to(device)
+
+        for i, (x,y,_) in enumerate(minibatches):
+            x = x.to(device, non_blocking=True)
+            y = y.to(device, non_blocking=True)
+
+            losses[i] = self.loss_type(self.predict(x), y)
+            self.q[i] *= torch.exp(self.theta * losses[i].detach())
+
+        self.q /= torch.sum(self.q)
+
+        loss_class = torch.dot(losses, self.q)
+        
+        self.optimizer.zero_grad()
+        loss_class.backward()
+        self.optimizer.step()
+
+        return {'loss_class' : loss_class.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+    def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
+        self.featurizer.eval()
+        self.classifier.eval()
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
+
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
+
+                pred = self.predict(all_x)
+                _, pred = pred.max(1) # same as np.argmax()
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+
+
+        self.featurizer.train()
+        self.classifier.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
+
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
+
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
+
+        state_dict = {
+            'step': step,
+            'network': self.network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'rng': torch.get_rng_state(),
+            'np_random': np.random.get_state(),
+        }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)        
+
+    def load_ckpt(self, checkpoint_path):
+        state_dict = torch.load(checkpoint_path, weights_only=False)
+        step = state_dict['step']
+        self.network.load_state_dict(state_dict['network'])
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        torch.set_rng_state(state_dict['rng'])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'])
+        np.random.set_state(state_dict['np_random'])
+        return step
 
 class DANN(Algorithm):
     def __init__ (self, cfgs, args):
@@ -1222,6 +1340,8 @@ class Fish(Algorithm):
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return step
+
+
 
 class CFSM(Algorithm):
     def __init__ (self, cfgs, args):

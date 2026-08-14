@@ -32,15 +32,19 @@ def get_random_search_configs(cfgs):
     elif cfgs['algorithm'] == 'Fish':
         cfgs['Fish']['lr_meta'] = 5 * 10**np.random.uniform(-1,0)
 
-    elif cfgs['algorithm'] == 'Proposed1':
-        cfgs['Proposed1']['iter'] = int(np.random.uniform(500,700))
-
     elif cfgs['algorithm'] == 'CFSM':
         cfgs['CFSM']['lambd_domain'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['lambd_orth'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['lambd_cross_dom'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['lambd_cross_sample'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['theta'] = np.random.uniform(0.1,1)
+
+    elif cfgs['algorithm'] == 'GroupDRO':
+        cfgs['GroupDRO']['theta'] = 10**np.random.uniform(-3,-1)
+
+    elif cfgs['algorithm'] == 'Proposed1':
+        cfgs['Proposed1']['iter'] = int(np.random.uniform(500,700))
+
 
     elif cfgs['algorithm'] == 'Proposed2':
         cfgs['Proposed2']['lambd_domain'] = 10**np.random.uniform(0,1)
@@ -51,3 +55,4 @@ def get_random_search_configs(cfgs):
 
         cfgs['Proposed2']['num_clusters'] = np.random.randint(3,11)
         cfgs['Proposed2']['reassign_ratio'] = np.random.uniform(0.01,0.2)
+    

@@ -14,6 +14,7 @@ algos_dict = {
     'Fish'      : Fish,
     'VRex'      : VRex,
     'CFSM'      : CFSM,
+    'GroupDRO'  : GroupDRO,
     'Proposed1' : Proposed1,
     'Proposed2' : Proposed2,
 }
