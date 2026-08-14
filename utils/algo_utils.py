@@ -1453,16 +1453,16 @@ class Fishr(Algorithm):
         preds = self.predict(all_x)
         loss_class = self.loss_type(preds, all_y)
 
-        penalty_weight = 0
-
         if step >= self.iter:
             penalty_weight = self.lambd
             penalty = self.compute_fishr_penalty(preds, all_y, len_minibatches)
-
-            if step == self.iter != 0:
-                # Reset Adam as in IRM or V-REx, because it may not like the sharp jump in
-                # gradient magnitudes that happens at this step.
-                self._init_optimizer()
+        else:        
+            penalty_weight = 0
+            penalty = torch.tensor(0).to(device)
+        if step == self.iter != 0:
+            # Reset Adam as in IRM or V-REx, because it may not like the sharp jump in
+            # gradient magnitudes that happens at this step.
+            self._init_optimizer()
 
 
         loss = loss_class + penalty_weight * penalty
