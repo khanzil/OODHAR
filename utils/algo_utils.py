@@ -686,7 +686,7 @@ class GroupDRO(Algorithm):
             y = y.to(device, non_blocking=True)
 
             losses[i] = self.loss_type(self.predict(x), y)
-            self.q[i] *= torch.exp(self.theta * losses[i].detach())
+            self.q[i] *= torch.exp(self.theta * losses[i].data)
 
         self.q /= torch.sum(self.q)
 
