@@ -674,6 +674,10 @@ class GroupDRO(Algorithm):
             self.classifier.cuda()
             self.q.cuda()
 
+        print(self.featurizer.device)
+        print(self.classifier.device)
+        print(self.q.device)
+
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
         self.classifier.train()
@@ -686,7 +690,6 @@ class GroupDRO(Algorithm):
             y = y.to(device, non_blocking=True)
 
             losses[i] = self.loss_type(self.predict(x), y)
-            print(self.q.device, losses.device)
             self.q[i] *= torch.exp(self.theta * losses[i].data)
 
         self.q /= torch.sum(self.q)
