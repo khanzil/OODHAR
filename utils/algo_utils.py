@@ -1841,10 +1841,10 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
+        # loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_cross_dom * loss_cross_dom
+        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample # + self.lambd_cross_dom * loss_cross_dom
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1854,7 +1854,7 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross_dom': loss_cross_dom.item(),
+                # 'loss_cross_dom': loss_cross_dom.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
                 }
 
