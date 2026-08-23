@@ -2157,7 +2157,7 @@ class CORAL(Algorithm):
 
         return {'loss' : loss.item(),
                 'loss_class' : loss_class.item(),
-                'loss_mmd': penalty.item()}
+                'loss_coral': penalty.item()}
 
     def predict(self, x):
         return self.network(x)
