@@ -1995,7 +1995,7 @@ class MMD(Algorithm):
         all_x = all_x.to(device, non_blocking=True)
         all_y = all_y.to(device, non_blocking=True)
 
-        d_all_z = [self.classifier(x) for x,_,_ in minibatches]
+        d_all_z = [self.classifier(x.to(device, non_blocking=True)) for x,_,_ in minibatches]
         for i in range(len_minibatches):
             for j in range(i + 1, len_minibatches):
                 penalty += self.mmd(d_all_z[i], d_all_z[j])
@@ -2138,7 +2138,7 @@ class CORAL(Algorithm):
         all_x = all_x.to(device, non_blocking=True)
         all_y = all_y.to(device, non_blocking=True)
 
-        d_all_z = [self.classifier(x) for x,_,_ in minibatches]
+        d_all_z = [self.classifier(x.to(device, non_blocking=True)) for x,_,_ in minibatches]
         for i in range(len_minibatches):
             for j in range(i + 1, len_minibatches):
                 penalty += self.coral(d_all_z[i], d_all_z[j])
