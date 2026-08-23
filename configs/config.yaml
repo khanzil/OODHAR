@@ -55,7 +55,11 @@ Fishr:
   lambd: 1
   ema: 0.9
 SAM:
-  rho:
+  rho: 0.01
+MMD:
+  lambd: 0.01
+CORAL:
+  lambd: 0.01
 Proposed1:
   loss_type_d: CrossEntropy
   d_nonlinear_classifier: true

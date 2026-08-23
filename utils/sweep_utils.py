@@ -49,7 +49,12 @@ def get_random_search_configs(cfgs):
         cfgs['Fishr']['iter'] = int(np.random.uniform(500,700))
         cfgs['Fishr']['lambd'] = 10**np.random.uniform(2,4)
         cfgs['Fishr']['ema'] = np.random.uniform(0.9,0.99)
-                
+
+    elif cfgs['algorithm'] == 'MMD':
+        cfgs['MMD']['lambd'] = 10**np.random.uniform(-1, 1)
+
+    elif cfgs['algorithm'] == 'CORAL':
+        cfgs['CORAL']['lambd'] = 10**np.random.uniform(-1, 1)
 
     elif cfgs['algorithm'] == 'Proposed1':
         cfgs['Proposed1']['iter'] = int(np.random.uniform(500,700))
