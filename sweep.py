@@ -35,8 +35,8 @@ if __name__ == '__main__':
             with open(cfg_yaml_list[-1][0], 'w') as f:
                 yaml.dump(cfgs, f)
 
-            print(f'Starting {cfgs['train_id']}')
-            subprocess.call(f'python train.py -c {cfgs} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
+            print(f"Starting {cfgs['train_id']}")
+            subprocess.call(f"python train.py -c {cfgs} train --num_workers={args.num_workers} --seed={seed} --search={search}", shell=True)
             
 
     # # run subprocesses for each congis_{i}.yaml
