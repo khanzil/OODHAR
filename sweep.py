@@ -34,14 +34,17 @@ if __name__ == '__main__':
             cfgs['featurizer'] = args.featurizer
             with open(cfg_yaml_list[-1][0], 'w') as f:
                 yaml.dump(cfgs, f)
+
+            print(f'Starting {cfgs}')
+            subprocess.call(f'python train.py -c {cfgs} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
             
 
     # # run subprocesses for each congis_{i}.yaml
-    for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
-        if search < args.search_start:
-            continue
-        print(f'Starting {cfg_yaml}')
-        subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
+    # for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
+    #     if search < args.search_start:
+    #         continue
+    #     print(f'Starting {cfg_yaml}')
+    #     subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
 
 
 

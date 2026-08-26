@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 detail = "Algo" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
 plot_graph = False
 
-# root_dir = './results/Glasgow/Room'
-# algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'P_KMeans']
+root_dir = './results/Glasgow/Room'
+algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
 
-root_dir = './results/Glasgow/Age'
-algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'P_KMeans', 'P_Condi', 'P_cross_dom', 'P_KMeans_fixed_n_cluster']
+# root_dir = './results/Glasgow/Age'
+# algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
 
 
 
@@ -96,16 +96,13 @@ class search_results():
         if len(self.seed_best) == 1:
             _, algo_avg = self.seed_best[0]
         else:
-            algo_avg = {'loss_class': 0,
-                        'tr_avg_acc': 0,
-                        'val_avg_acc': 0,
-                        'test_acc': 0}
+            algo_avg = {'loss_class': [],
+                        'tr_avg_acc': [],
+                        'val_avg_acc': [],
+                        'test_acc': []}
             for i_seed, (_, seed) in enumerate(self.seed_best):
                 for key in seed.keys():
-                    algo_avg[key] += seed[key]
-
-            for key in algo_avg.keys():
-                algo_avg[key] /= len(self.seed_best)
+                    algo_avg[key].append(seed[key])
 
         return algo_avg
 
@@ -168,7 +165,6 @@ if __name__ == '__main__':
 
                 for key in seed.keys():
                     if 'acc' in key:
-                        seed[key] = int(seed[key] * 1e4)/1.0e2
                         print(f"{seed[key]:<.2f}".ljust(15), end="")
                     else:
                         print(f"{seed[key]:<.6f}".ljust(15), end="")
@@ -180,10 +176,11 @@ if __name__ == '__main__':
             print(f"{algo}".ljust(30), end="")
             for key in algo_avg.keys():
                 if 'acc' in key:
-                    algo_avg[key] = int(algo_avg[key] * 1e4)/1.0e2
-                    print(f"{algo_avg[key]:<.2f}".ljust(15), end="")
+                    print(f"{100*np.mean(algo_avg[key]):<.2f}\u00B1{100*np.std(algo_avg[key]):<.2f}".ljust(15), end="")
                 else:
-                    print(f"{algo_avg[key]:<.6f}".ljust(15), end="")
+                    print(f"{np.mean(algo_avg[key]):<.4f}\u00B1{np.std(algo_avg[key]):<.4f}".ljust(15), end="")
+
+
             print("")
 
 

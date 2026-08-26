@@ -1928,7 +1928,6 @@ class CFSM(Algorithm):
         np.random.set_state(state_dict['np_random'])
         return step
 
-
 class MMD(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda
@@ -2080,7 +2079,6 @@ class MMD(Algorithm):
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return step
-
 
 class CORAL(Algorithm):
     def __init__ (self, cfgs, args):
