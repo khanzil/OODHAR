@@ -4,8 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-detail = "Algo" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
-plot_graph = False
+detail = "Seed" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
 
 root_dir = './results/Glasgow/Room'
 algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
@@ -165,7 +164,7 @@ if __name__ == '__main__':
 
                 for key in seed.keys():
                     if 'acc' in key:
-                        print(f"{seed[key]:<.2f}".ljust(15), end="")
+                        print(f"{100*seed[key]:<.2f}".ljust(15), end="")
                     else:
                         print(f"{seed[key]:<.6f}".ljust(15), end="")
                 print("")
@@ -182,37 +181,6 @@ if __name__ == '__main__':
 
 
             print("")
-
-
-    #     if plot_graph:
-    #         for i_seed, (i_search, _) in enumerate(algo_results.seed_best):
-    #             search = algo_results.result[i_seed][i_search]
-    #             plot_array = []
-    #             for i_test_dom, test_dom in enumerate(search):
-
-    #                 plot_array.append([test_dom[key] for key in ['tr_avg_acc', 'val_avg_acc', 'test_acc']])
-
-    #             plot_array = np.stack(plot_array) # n_test_dom x 3
-    #             x = np.arange(len(plot_array))
-    #             width = 0.2
-    #             for arr in plot_array:
-    #                 ax[i_algo, i_seed].bar(x - width, plot_array[:,0], width, label='tr_avg_acc', color='#90be6d', edgecolor='black')
-    #                 ax[i_algo, i_seed].bar(x        , plot_array[:,1], width, label='val_avg_acc', color="#ffad32", edgecolor='black')
-    #                 ax[i_algo, i_seed].bar(x + width, plot_array[:,2], width, label='test_avg_acc', color="#487fff", edgecolor='black')
-
-
-    #         ax[i_algo, i_seed].set_ylabel('Acc (%)', fontsize=14)
-    #         ax[i_algo, i_seed].set_xticks(x)
-    #         ax[i_algo, i_seed].set_xticklabels(x)
-
-    #         ax[i_algo, i_seed].set_ylim(0.7,1.0)
-
-            
-
-
-    # if plot_graph:
-    #     plt.tight_layout()
-    #     plt.show()
 
 
 

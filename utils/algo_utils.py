@@ -47,11 +47,6 @@ class Algorithm():
                 Calculate metrics on validation set and train.
             '''
             if step % val_freq == 0 or step==total_step-1:
-                # _, train_acc = self.validate_step(in_val_loader)
-                # _, val_acc = self.validate_step(out_val_loader)
-                # _, test_acc = self.validate_step(test_loader)
-
-
                 _, tr_all_acc, tr_avg_acc = self.validate_step(in_val_loader)
                 for i_dom, acc in enumerate(tr_all_acc):
                     if i_dom == i_test_dom:
@@ -71,14 +66,9 @@ class Algorithm():
                 loss_list[-1].update({f'te_dom{i_test_dom}_acc': te_acc})
 
                 mem_gb = torch.cuda.max_memory_allocated() / (1024.*1024.*1024.)
-                
+
                 loss_list[-1].update({'step': float(step),
                                       'mem_gb': mem_gb})
-                # loss_list[-1].update({'train_acc': train_acc,
-                #                     'val_acc': val_acc,
-                #                     'test_acc': test_acc,
-                #                     'step': float(step),
-                #                     'mem_gb': mem_gb})
 
                 '''
                     Print and save validation results at every val step
@@ -90,7 +80,6 @@ class Algorithm():
                 for key in loss_list[-1].keys():
                     tqdm.write(f"{loss_list[-1][key]:<10f}     ", end="")
                 tqdm.write("\n\n")
-
 
             '''
                 Save the checkpoints
@@ -388,7 +377,6 @@ class Proposed1(Algorithm):
         np.random.set_state(state_dict['np_random'])
         return step    
 
-
 class Proposed2(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda
@@ -644,7 +632,6 @@ class Proposed2(Algorithm):
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
         return step
-
 
 class GroupDRO(Algorithm):
     def __init__ (self, cfgs, args):
@@ -1896,7 +1883,6 @@ class CFSM(Algorithm):
 
         return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
 
-
     def save_ckpt(self, step, ckpts_dir, is_best=False):
         if is_best:
             checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
@@ -1926,6 +1912,9 @@ class CFSM(Algorithm):
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'])
         np.random.set_state(state_dict['np_random'])
+        self.EnvRelated.load_state_dict(state_dict['EnvRelated'])
+        self.d_classifier.load_state_dict(state_dict['d_classifier'])
+        self.ClassPrototype.load_state_dict(state_dict['ClassPrototype'])
         return step
 
 class MMD(Algorithm):
