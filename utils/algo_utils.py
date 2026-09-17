@@ -212,7 +212,8 @@ class ERM(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -367,7 +368,8 @@ class Proposed1(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -623,7 +625,8 @@ class Proposed2(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -743,7 +746,8 @@ class GroupDRO(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -893,7 +897,8 @@ class DANN(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.featurizer.load_state_dict(state_dict['featurizer'])
         self.classifier.load_state_dict(state_dict['classifier'])
@@ -1041,7 +1046,8 @@ class IRM(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -1184,7 +1190,8 @@ class VRex(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -1319,7 +1326,8 @@ class Fish(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -1513,7 +1521,8 @@ class Fishr(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -1645,7 +1654,8 @@ class SAM(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -1904,7 +1914,8 @@ class CFSM(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -2059,7 +2070,8 @@ class MMD(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -2201,7 +2213,8 @@ class CORAL(Algorithm):
         torch.save(state_dict, checkpoint_path)        
 
     def load_ckpt(self, checkpoint_path):
-        state_dict = torch.load(checkpoint_path, weights_only=False)
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
