@@ -1916,17 +1916,6 @@ class CFSM(Algorithm):
     def load_ckpt(self, checkpoint_path):
         device = "cuda" if self.cuda else "cpu"
         state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
-
-        rng = state_dict['rng']
-        print(f"type:   {type(rng)}")
-        print(f"dtype:  {rng.dtype}")
-        print(f"device: {rng.device}")
-        print(f"shape:  {rng.shape}")
-        rng_cpu = rng.cpu()
-        print(f"after .cpu() → device: {rng_cpu.device}, dtype: {rng_cpu.dtype}")
-
-        torch.set_rng_state(rng_cpu)
-        
         step = state_dict['step']
         self.network.load_state_dict(state_dict['network'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
