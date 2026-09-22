@@ -204,7 +204,7 @@ class ERM(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -358,7 +358,7 @@ class Proposed1(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
             'd_branch': self.D_branch.state_dict(),
             'd_classifier': self.d_classifier.state_dict()
@@ -615,7 +615,7 @@ class Proposed2(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
             'EnvRelated': self.EnvRelated.state_dict(),
             'd_classifier': self.d_classifier.state_dict(),
@@ -738,7 +738,7 @@ class GroupDRO(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -889,7 +889,7 @@ class DANN(Algorithm):
             'classifier': self.classifier.state_dict(),
             'discriminator': self.discriminator.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1038,7 +1038,7 @@ class IRM(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1182,7 +1182,7 @@ class VRex(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1318,7 +1318,7 @@ class Fish(Algorithm):
             'optimizer': self.optimizer.state_dict(),
             'network_inner': self.network_inner.state_dict(),
             'optimizer_inner': self.optimizer_inner.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1513,7 +1513,7 @@ class Fishr(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1646,7 +1646,7 @@ class SAM(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -1903,7 +1903,7 @@ class CFSM(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
             'EnvRelated': self.EnvRelated.state_dict(),
             'd_classifier': self.d_classifier.state_dict(),
@@ -1911,7 +1911,7 @@ class CFSM(Algorithm):
         }
         if torch.cuda.is_available():
             state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
-        torch.save(state_dict, checkpoint_path)        
+        torch.save(state_dict, checkpoint_path)
 
     def load_ckpt(self, checkpoint_path):
         device = "cuda" if self.cuda else "cpu"
@@ -2062,7 +2062,7 @@ class MMD(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
@@ -2205,7 +2205,7 @@ class CORAL(Algorithm):
             'step': step,
             'network': self.network.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'rng': torch.get_rng_state(),
+            'rng': torch.get_rng_state().cpu(),
             'np_random': np.random.get_state(),
         }
         if torch.cuda.is_available():
