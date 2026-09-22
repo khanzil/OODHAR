@@ -220,7 +220,7 @@ class ERM(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class Proposed1(Algorithm):
@@ -376,7 +376,7 @@ class Proposed1(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step    
 
 class Proposed2(Algorithm):
@@ -633,7 +633,7 @@ class Proposed2(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class GroupDRO(Algorithm):
@@ -754,7 +754,7 @@ class GroupDRO(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class DANN(Algorithm):
@@ -907,7 +907,7 @@ class DANN(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class IRM(Algorithm):
@@ -1054,7 +1054,7 @@ class IRM(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class VRex(Algorithm):
@@ -1198,7 +1198,7 @@ class VRex(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class Fish(Algorithm):
@@ -1336,7 +1336,7 @@ class Fish(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class Fishr(Algorithm):
@@ -1529,7 +1529,7 @@ class Fishr(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class SAM(Algorithm):
@@ -1662,7 +1662,7 @@ class SAM(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class CFSM(Algorithm):
@@ -1922,7 +1922,7 @@ class CFSM(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         self.EnvRelated.load_state_dict(state_dict['EnvRelated'])
         self.d_classifier.load_state_dict(state_dict['d_classifier'])
         self.ClassPrototype.load_state_dict(state_dict['ClassPrototype'])
@@ -2078,7 +2078,7 @@ class MMD(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 class CORAL(Algorithm):
@@ -2221,7 +2221,7 @@ class CORAL(Algorithm):
         torch.set_rng_state(state_dict['rng'].cpu())
         if torch.cuda.is_available():
             torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
-        np.random.set_state(state_dict['np_random'].cpu())
+        np.random.set_state(state_dict['np_random'])
         return step
 
 
