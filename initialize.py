@@ -2,6 +2,7 @@ import os
 from ruamel.yaml import YAML
 import torch
 import numpy as np
+import shutil
 import sys
 from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
 
@@ -38,10 +39,15 @@ def init_loader(cfgs, args):
     ckpts_dir = os.path.join('./ckpts', cfgs['dataset'], cfgs['train_id'])
     if cfgs['load_checkpoint'] == 'None':
         if os.path.isdir(results_dir):
-            raise ValueError(f"{results_dir} Already exist!")
+            print(f"{results_dir} Already exist! Delete dir: Y/N?")
+            ans = input()
+            if ans == 'Y':
+                shutil.rmtree(results_dir)
+                os.makedirs(results_dir)
+                os.makedirs(ckpts_dir)
+            else:
+                raise ValueError(f"{results_dir} Already exist!")
 
-        os.makedirs(results_dir)
-        os.makedirs(ckpts_dir)
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
             yaml.dump(cfgs, f)    
