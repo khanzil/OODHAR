@@ -41,12 +41,11 @@ def init_loader(cfgs, args):
         if os.path.isdir(results_dir):
             print(f"{results_dir} Already exist! Delete dir: Y/N?")
             ans = input()
-            if ans == 'Y':
-                shutil.rmtree(results_dir)
-                os.makedirs(results_dir, exist_ok=True)
-                os.makedirs(ckpts_dir, exist_ok=True)
-            else:
+            if ans != 'Y':
                 raise ValueError(f"{results_dir} Already exist!")
+
+        os.makedirs(results_dir, exist_ok=True)
+        os.makedirs(ckpts_dir, exist_ok=True)
 
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
