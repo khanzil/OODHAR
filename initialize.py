@@ -43,8 +43,8 @@ def init_loader(cfgs, args):
             ans = input()
             if ans == 'Y':
                 shutil.rmtree(results_dir)
-                os.makedirs(results_dir)
-                os.makedirs(ckpts_dir)
+                os.makedirs(results_dir, exist_ok=True)
+                os.makedirs(ckpts_dir, exist_ok=True)
             else:
                 raise ValueError(f"{results_dir} Already exist!")
 
