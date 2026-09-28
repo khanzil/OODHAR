@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     # # run subprocesses for each congis_{i}.yaml
     if args.single_gpu:
-        for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
+        for i, cfg_yaml in enumerate(cfg_yaml_list):
             print(f'Starting {cfg_yaml}')
             subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
     else:
