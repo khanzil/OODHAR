@@ -34,7 +34,7 @@ class Algorithm():
         loss_list = []
 
         total_step = num_steps-cur_step
-        iterator = tqdm(range(cur_step, num_steps), total=total_step, unit='step', position=0, leave=True)
+        iterator = tqdm(range(cur_step, num_steps), total=total_step, unit='step', position=0, leave=True, dynamic_ncols=True)
         for step in iterator:
             minibatchess = next(train_loader)
 

@@ -49,7 +49,7 @@ def init_loader(cfgs, args):
 
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
-            yaml.dump(cfgs, f)    
+            yaml.dump(cfgs, f)
             yaml.dump(cfgs, sys.stdout)
 
     '''
