@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--trial_start', type=int, default=0, help='To do more trial if needed')
     parser.add_argument('--n_searchs', type=int, default=4, help='Number of hyperparameter searchs')
     parser.add_argument('--search_start', type=int, default=1, help='To do more search if needed')
-    parser.add_argument('--single_gpu', type=bool, default=True, help='Set to False to use more than 1 GPU')
+    parser.add_argument('--multi_gpu', action='store_true', help='Set to False to use more than 1 GPU')
     parser.add_argument('--algo', type=str)
     parser.add_argument('--featurizer', type=str)
     parser.add_argument('--num_workers', type=int)
@@ -50,10 +50,10 @@ if __name__ == '__main__':
 
             # print(f"Starting {cfgs['train_id']}")
             # subprocess.call(f"python train.py -c {train_cfg_dir} train --num_workers={args.num_workers} --seed={seed} --search={search}", shell=True)
-    print(args.single_gpu)
-    print(type(args.single_gpu))
+
+
     # # run subprocesses for each congis_{i}.yaml
-    if args.single_gpu:
+    if (torch.cuda.device_count() == 1) or (not args.multi_gpu):
         for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
             print(f'Starting {cfg_yaml}')
             subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
