@@ -46,14 +46,14 @@ if __name__ == '__main__':
             cfgs['featurizer'] = args.featurizer
             with open(train_cfg_dir, 'w') as f:
                 yaml.dump(cfgs, f)
-            cfg_yaml_list.append(f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml")
+            cfg_yaml_list.append((f"./configs/sweep/config_seed{seed}_search{search}_{args.algo}_{args.featurizer}.yaml",seed,search))
 
             # print(f"Starting {cfgs['train_id']}")
             # subprocess.call(f"python train.py -c {train_cfg_dir} train --num_workers={args.num_workers} --seed={seed} --search={search}", shell=True)
 
     # # run subprocesses for each congis_{i}.yaml
     if args.single_gpu:
-        for i, cfg_yaml in enumerate(cfg_yaml_list):
+        for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
             print(f'Starting {cfg_yaml}')
             subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
     else:
@@ -73,9 +73,10 @@ if __name__ == '__main__':
             for idx, gpu_idx in enumerate(available_gpus):
                 proc = procs_by_gpu[idx]
                 if (proc is None) or (proc.poll() is not None):
-                    cmd = cfg_yaml_list.pop(0)
+                    cfg_yaml,seed,search = cfg_yaml_list.pop(0)
+                    print(f'Starting {cfg_yaml}')
                     new_proc = subprocess.Popen(
-                        f'CUDA_VISIBLE_DEVICES={gpu_idx} {cmd}',
+                        f'CUDA_VISIBLE_DEVICES={gpu_idx} python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}',
                         shell=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
