@@ -50,13 +50,15 @@ if __name__ == '__main__':
 
             # print(f"Starting {cfgs['train_id']}")
             # subprocess.call(f"python train.py -c {train_cfg_dir} train --num_workers={args.num_workers} --seed={seed} --search={search}", shell=True)
-
+    print(args.single_gpu)
+    print(type(args.single_gpu))
     # # run subprocesses for each congis_{i}.yaml
     if args.single_gpu:
         for i, (cfg_yaml,seed,search) in enumerate(cfg_yaml_list):
             print(f'Starting {cfg_yaml}')
             subprocess.call(f'python train.py -c {cfg_yaml} train --num_workers={args.num_workers} --seed={seed} --search={search}', shell=True)
     else:
+        print('Starting multi-GPU training')
         try:
             # Get list of GPUs from env, split by ',' and remove empty string ''
             # To handle the case when there is one extra comma: `CUDA_VISIBLE_DEVICES=0,1,2,3, python3 ...`
