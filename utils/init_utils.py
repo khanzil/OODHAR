@@ -42,6 +42,9 @@ def get_dataloader(cfgs, args):
     generator = torch.Generator()
     generator.manual_seed(args.seed)
 
+    generator_loader = torch.Generator()
+    generator_loader.manual_seed(args.search)
+
     if cfgs['test_dom'] == 'None':
         # This code is using train-valication domain split and sweep through all test domain combination
         for i_test_dom, test_dom in enumerate(dom_list):
@@ -74,7 +77,8 @@ def get_dataloader(cfgs, args):
             train_loader = [InfiniteDataLoader(dataset=dataset,
                                                 weights=weights,
                                                 batch_size=cfgs['batch_size'],
-                                                num_workers=dataset_num_workers)
+                                                num_workers=dataset_num_workers,
+                                                generator=generator_loader)
                              for dataset, weights in train_datasets]
             train_loader = zip(*train_loader)
 
@@ -127,7 +131,8 @@ def get_dataloader(cfgs, args):
         train_loaders = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
                                             batch_size=cfgs['batch_size'],
-                                            num_workers=int(args.num_workers/len(train_dataset)))
+                                            num_workers=int(args.num_workers/len(train_dataset)),
+                                            generator=generator_loader)
                         for dataset, weights in train_datasets]
         train_loaders = zip(*train_loaders)
 
@@ -180,7 +185,8 @@ def get_dataloader(cfgs, args):
         train_loaders = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
                                             batch_size=cfgs['batch_size'],
-                                            num_workers=int(args.num_workers/len(train_dataset)))
+                                            num_workers=int(args.num_workers/len(train_dataset)),
+                                            generator=generator_loader)
                          for dataset, weights in train_datasets]
         train_loaders = zip(*train_loaders)
 

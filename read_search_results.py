@@ -4,10 +4,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-detail = "Seed" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
+detail = "All" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
 
 root_dir = './results/Glasgow/Room'
-algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
+algo_list = ['ERM'] #, 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
 
 # root_dir = './results/Glasgow/Age'
 # algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']

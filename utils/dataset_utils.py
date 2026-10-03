@@ -55,7 +55,7 @@ class _InfiniteSampler(torch.utils.data.Sampler):
                 yield batch
 
 class InfiniteDataLoader:
-    def __init__(self, dataset, weights, batch_size, num_workers):
+    def __init__(self, dataset, weights, batch_size, num_workers, generator):
         super().__init__()
 
         if weights is not None:
@@ -78,7 +78,8 @@ class InfiniteDataLoader:
             dataset,
             num_workers=num_workers,
             batch_sampler=_InfiniteSampler(batch_sampler),
-            pin_memory=True
+            pin_memory=True,
+            generator=generator
         ))
 
     def __iter__(self):
