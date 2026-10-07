@@ -1773,7 +1773,7 @@ class CFSM(Algorithm):
 
         features_mixed = z_cate[idx_i]+z_env[idx_j]
         pred_mixed = self.predict(features_mixed)
-        
+
         if use_onehot:
             ground_truth = nn.functional.one_hot(all_y[idx_i], num_classes=num_classes)
         else:
@@ -1858,7 +1858,7 @@ class CFSM(Algorithm):
         loss_orth = self.orth_loss()
         # loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
-        loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier.weight[-1].shape[1])
+        loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[1])
 
         loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_dom * loss_cross_dom
 
