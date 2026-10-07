@@ -1772,7 +1772,7 @@ class CFSM(Algorithm):
         idx_i, idx_j = torch.where(out_dom_pair)
 
         features_mixed = z_cate[idx_i]+z_env[idx_j]
-        pred_mixed = self.predict(features_mixed)
+        pred_mixed = self.classifier(features_mixed)
 
         if use_onehot:
             ground_truth = nn.functional.one_hot(all_y[idx_i], num_classes=num_classes)
