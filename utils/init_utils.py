@@ -41,7 +41,6 @@ def get_dataloader(cfgs, args):
     dataset_num_workers = -1
     generator = torch.Generator()
     generator.manual_seed(args.seed)
-
     generator_loader = torch.Generator()
     generator_loader.manual_seed(args.search)
 

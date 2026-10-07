@@ -1684,9 +1684,11 @@ class CFSM(Algorithm):
         self.n_domains = cfgs['num_domains']
         self.theta = cfgs['CFSM']['theta']
         self.lambd_orth = cfgs['CFSM']['lambd_orth']
-        self.lambd_domain = cfgs['CFSM']['lambd_domain']
         self.lambd_cross_dom = cfgs['CFSM']['lambd_cross_dom']
+        self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
         self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
+
+        self.mixup_use_onehot = cfgs['CFSM']['mixup_use_onehot']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -1765,6 +1767,22 @@ class CFSM(Algorithm):
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
+    def mixup_loss(self, z_cate, z_env, all_y, all_d, pred, use_onehot=True, num_classes=None):
+        out_dom_pair = all_d.unsqueeze(0) != all_d.unsqueeze(1)
+        idx_i, idx_j = torch.where(out_dom_pair)
+
+        features_mixed = z_cate[idx_i]+z_env[idx_j]
+        pred_mixed = self.predict(features_mixed)
+        
+        if use_onehot:
+            ground_truth = nn.functional.one_hot(all_y[idx_i], num_classes=num_classes)
+        else:
+            ground_truth = pred[idx_i]
+
+        return nn.functional.mse_loss(pred_mixed, ground_truth)
+
+
+
     def cross_dom_loss(self, z_cate, all_y, all_d):
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
@@ -1840,8 +1858,9 @@ class CFSM(Algorithm):
         loss_orth = self.orth_loss()
         # loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
+        loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier.weight[-1].shape[1])
 
-        loss = loss_class + self.lambd_domain * loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample # + self.lambd_cross_dom * loss_cross_dom
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_dom * loss_cross_dom
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1853,6 +1872,7 @@ class CFSM(Algorithm):
                 'loss_orth'     : loss_orth.item(),
                 # 'loss_cross_dom': loss_cross_dom.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
+                'loss_mixup'    : loss_mixup.item(),
                 }
 
     def predict(self, x):

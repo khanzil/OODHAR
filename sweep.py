@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--trial_start', type=int, default=0, help='To do more trial if needed')
     parser.add_argument('--n_searchs', type=int, default=4, help='Number of hyperparameter searchs')
     parser.add_argument('--search_start', type=int, default=1, help='To do more search if needed')
-    parser.add_argument('--multi_gpu', action='store_true', help='Set to False to use more than 1 GPU')
+    parser.add_argument('--multi_gpu', action='store_true', help='Set to use more than 1 GPU')
     parser.add_argument('--algo', type=str)
     parser.add_argument('--featurizer', type=str)
     parser.add_argument('--num_workers', type=int)
