@@ -1779,7 +1779,7 @@ class CFSM(Algorithm):
         else:
             ground_truth = pred[idx_i]
 
-        return nn.functional.mse_loss(pred_mixed, ground_truth)
+        return nn.functional.mse_loss(pred_mixed, ground_truth.float())
 
 
 
