@@ -1785,9 +1785,9 @@ class CFSM(Algorithm):
     def cross_class_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
-        in_dom_out_class_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (all_y.unsqueeze(0) != all_y.unsqueeze(1))
+        out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1))
 
-        idx_i, idx_j = torch.where(torch.triu(in_dom_out_class_pair))
+        idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
 
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
