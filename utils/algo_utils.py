@@ -1790,7 +1790,7 @@ class CFSM(Algorithm):
 
         z1 = z_cate[idx_i] - z_cate[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
-        return -torch.mean(torch.stack([sum(z1[i] * z1[j], dim=1) 
+        return -torch.mean(torch.stack([torch.sum(z1[i] * z1[j], dim=1) 
                                             for i in range(len(z1)) 
                                             for j in range(i+1, len(z1))]))
 
