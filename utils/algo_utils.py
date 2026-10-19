@@ -1684,7 +1684,7 @@ class CFSM(Algorithm):
         self.n_domains = cfgs['num_domains']
         self.theta = cfgs['CFSM']['theta']
         self.lambd_orth = cfgs['CFSM']['lambd_orth']
-        self.lambd_cross_dom = cfgs['CFSM']['lambd_cross_dom']
+        self.lambd_cross_class = cfgs['CFSM']['lambd_cross_class']
         self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
         self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
 
@@ -1771,7 +1771,7 @@ class CFSM(Algorithm):
         out_dom_pair = all_d.unsqueeze(0) != all_d.unsqueeze(1)
         idx_i, idx_j = torch.where(out_dom_pair)
 
-        features_mixed = z_cate[idx_i]+z_env[idx_j]
+        features_mixed = z_cate[idx_i] + z_env[idx_j]
         pred_mixed = self.classifier(features_mixed)
 
         if use_onehot:
@@ -1782,55 +1782,18 @@ class CFSM(Algorithm):
         return nn.functional.mse_loss(pred_mixed, ground_truth.float())
 
 
+    def cross_class_loss(self, z_cate, all_y, all_d):
+        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        in_dom_out_class_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (all_y.unsqueeze(0) != all_y.unsqueeze(1))
 
-    def cross_dom_loss(self, z_cate, all_y, all_d):
-        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
+        idx_i, idx_j = torch.where(torch.triu(in_dom_out_class_pair))
 
-        proto = prototype[all_y]
+        z1 = z_cate[idx_i] - z_cate[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
-        sam_to_proto = z_cate - proto
+        return -torch.mean(torch.stack([sum(z1[i] * z1[j], dim=1) 
+                                            for i in range(len(z1)) 
+                                            for j in range(i+1, len(z1))]))
 
-        return torch.mean(torch.norm(sam_to_proto, p=2, dim=1))
-
-        # # z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        # # cos_sim = torch.inner(z_cate_norm, z_cate_norm)
-        # self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
-        # in_label_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
-        # cross_dom_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1))
-
-        # if not in_label_pair.any():
-        #     return torch.tensor(0, device=all_y.device)
-        
-        # # threshold = torch.mean(cos_sim[cross_label_pair])
-        # neg_pair = (cross_dom_pair) & (in_label_pair) # & (cos_sim < self.threshold)
-
-        # if not neg_pair.any():
-        #     return torch.tensor(0, device=all_y.device)
-
-        # # idx_i, idx_j = torch.where(neg_pair)
-        # # z_pos = z_cate[idx_i]
-        # # z_neg = z_cate[idx_j]
-
-        # # for param in self.classifier.parameters():
-        # #     param.requires_grad = False
-
-        # # pred_Zs = self.classifier(z_pos-z_neg)
-
-        # # loss_cross_dom = F.cross_entropy(pred_Zs, torch.ones_like(pred_Zs)/pred_Zs.shape[-1])
-
-        # # for param in self.classifier.parameters():
-        # #     param.requires_grad = True
-
-        # # return loss_cross_dom
-        
-        # idx_i, idx_j = torch.where(neg_pair)
-        # z_pos = z_cate[idx_i]
-        # z_neg = z_cate[idx_j]
-        # y_pos = all_y[idx_i]
-
-        # prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
-
-        # return torch.norm(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1), p='fro')/z_cate.shape[0]
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
@@ -1856,11 +1819,11 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        # loss_cross_dom = self.cross_dom_loss(z_cate, all_y, all_d) 
+        loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
-        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_dom * loss_cross_dom
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup + self.lambd_cross_class * loss_cross_class
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1870,7 +1833,7 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                # 'loss_cross_dom': loss_cross_dom.item(),
+                'loss_cross_class': loss_cross_class.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
                 'loss_mixup'    : loss_mixup.item(),
                 }

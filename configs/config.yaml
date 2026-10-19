@@ -45,7 +45,7 @@ CFSM:
   d_nonlinear_classifier: false
   lambd_domain: 0.1
   lambd_orth: 0.1
-  lambd_cross_dom: 0.1
+  lambd_cross_class: 0.1
   lambd_cross_sample: 0.1
   lambd_mixup: 0.1
   mixup_use_onehot: true
