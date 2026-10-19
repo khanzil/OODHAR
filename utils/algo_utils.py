@@ -1834,7 +1834,7 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross_class': loss_cross_class.item(),
+                'loss_cross_cl' : loss_cross_class.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
                 'loss_mixup'    : loss_mixup.item(),
                 }
