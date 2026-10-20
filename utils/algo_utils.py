@@ -1793,7 +1793,7 @@ class CFSM(Algorithm):
         sim = z1 @ z1.T
         mask = torch.triu(torch.ones(len(z1), len(z1), dtype=torch.bool, device=z1.device), diagonal=1)
 
-        return -torch.mean(sim[mask])
+        return -torch.mean(sim[mask].to(device=all_y.device, non_blocking=True))
 
 
     def update(self, minibatches, step, unlabeled=None):
