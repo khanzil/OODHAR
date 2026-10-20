@@ -36,12 +36,12 @@ class Algorithm():
         total_step = num_steps-cur_step
         iterator = tqdm(range(cur_step, num_steps), total=total_step, unit='step', position=0, leave=True, dynamic_ncols=True, miniters=val_freq)
         for step in iterator:
-            minibatchess = next(train_loader)
+            minibatches = next(train_loader)
 
             '''
                 Perform training
             '''
-            loss_list.append(self.update(minibatchess, step))
+            loss_list.append(self.update(minibatches, step))
 
             '''
                 Calculate metrics on validation set and train.
@@ -940,7 +940,7 @@ class IRM(Algorithm):
             self.classifier.cuda()
 
         self.irm_iter = cfgs['IRM']['iter']
-        self.lambd = cfgs['IRM']['lambd'] 
+        self.lambd = cfgs['IRM']['lambd']
 
     def _irm_penalty(self, pred, y):
         device = 'cuda' if self.cuda else 'cpu'
@@ -1785,15 +1785,15 @@ class CFSM(Algorithm):
     def cross_class_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
-        out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1))
-
+        out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
         idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
 
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
-        return -torch.mean(torch.stack([torch.sum(z1[i] * z1[j]) 
-                                            for i in range(len(z1)) 
-                                            for j in range(i+1, len(z1))]))
+        sim = z1 @ z1.T
+        mask = torch.triu(torch.ones(len(z1), len(z1), dtype=torch.bool, device=z1.device), diagonal=1)
+
+        return -torch.mean(sim[mask])
 
 
     def update(self, minibatches, step, unlabeled=None):
