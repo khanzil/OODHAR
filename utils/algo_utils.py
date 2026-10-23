@@ -1790,17 +1790,19 @@ class CFSM(Algorithm):
         idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
-        return torch.mean(torch.norm(z1, dim=1))
+        # return torch.mean(torch.norm(z1, dim=1))
         
         # sim = z1 @ z1.T
         # n = sim.shape[0]
         # n_pairs = n * (n - 1) / 2
         # return -torch.triu(sim, diagonal=1).sum() / n_pairs
         
-        # i, j = torch.triu_indices(z1.shape[0], z1.shape[0], offset=1)
-        # return (z1[i] + z1[j]).abs().sum(dim=0) / len(i)
 
-
+        
+        z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j]
+        P = z1.shape[0]
+        pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
+        return pair_sum / (P * (P - 1) / 2)
 
 
 
