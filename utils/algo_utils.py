@@ -1683,6 +1683,7 @@ class CFSM(Algorithm):
 
         self.n_domains = cfgs['num_domains']
         self.theta = cfgs['CFSM']['theta']
+        self.lambd_domain = cfgs['CFSM']['lambd_domain']
         self.lambd_orth = cfgs['CFSM']['lambd_orth']
         self.lambd_cross_class = cfgs['CFSM']['lambd_cross_class']
         self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
@@ -1834,7 +1835,7 @@ class CFSM(Algorithm):
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
-        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup + self.lambd_cross_class * loss_cross_class
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_class * loss_cross_class
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -1844,7 +1845,7 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                'loss_cross_cl' : loss_cross_class.item(),
+                # 'loss_cross_cl' : loss_cross_class.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
                 'loss_mixup'    : loss_mixup.item(),
                 }
