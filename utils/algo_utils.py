@@ -1785,15 +1785,22 @@ class CFSM(Algorithm):
     def cross_class_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
         self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+
         out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
         idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
-
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
+        
+        # sim = z1 @ z1.T
+        # n = sim.shape[0]
+        # n_pairs = n * (n - 1) / 2
+        # return -torch.triu(sim, diagonal=1).sum() / n_pairs
+        
+        
+        i, j = torch.triu_indices(z1.shape[0], z1.shape[0], offset=1)
+        return (z1[i] + z1[j]).abs().sum(dim=0)
+        
 
-        sim = z1 @ z1.T
-        mask = torch.triu(torch.ones(len(z1), len(z1), dtype=torch.bool, device=z1.device), diagonal=1)
 
-        return -torch.mean(sim[mask].to(device=all_y.device, non_blocking=True))
 
 
     def update(self, minibatches, step, unlabeled=None):
