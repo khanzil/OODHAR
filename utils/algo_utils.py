@@ -1795,9 +1795,10 @@ class CFSM(Algorithm):
         # n_pairs = n * (n - 1) / 2
         # return -torch.triu(sim, diagonal=1).sum() / n_pairs
         
-        
+        print(z1.shape)
         i, j = torch.triu_indices(z1.shape[0], z1.shape[0], offset=1)
-        return (z1[i] + z1[j]).abs().sum(dim=0)
+        print(len(i))
+        return (z1[i] + z1[j]).abs().sum(dim=0) / len(i)
         
 
 
