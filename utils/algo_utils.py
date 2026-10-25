@@ -1792,15 +1792,13 @@ class CFSM(Algorithm):
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
         # return torch.mean(torch.norm(z1, dim=1))
-        
+
         # sim = z1 @ z1.T
         # n = sim.shape[0]
         # n_pairs = n * (n - 1) / 2
         # return -torch.triu(sim, diagonal=1).sum() / n_pairs
-        
 
 
-        z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j]
         P = z1.shape[0]
         pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
         return pair_sum / (P * (P - 1) / 2)
@@ -1835,7 +1833,7 @@ class CFSM(Algorithm):
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
-        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_class * loss_cross_class
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup + self.lambd_cross_class * loss_cross_class
 
         self.optimizer.zero_grad()
         loss.backward()
