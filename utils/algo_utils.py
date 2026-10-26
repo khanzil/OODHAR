@@ -1781,7 +1781,7 @@ class CFSM(Algorithm):
             ground_truth = pred[idx_i]
 
         return nn.functional.mse_loss(pred_mixed, ground_truth.float())
-
+        torch.randint()
 
     def cross_class_loss(self, z_cate, all_y, all_d):
         z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
@@ -1790,18 +1790,28 @@ class CFSM(Algorithm):
         out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
         idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
+        
+        # -----------
+        dom_pair = torch.stack((all_d[idx_i], all_d[idx_i]), axis=1)
+        class_z1 = all_y[idx_i]
+        in_dom_pair_out_class = (dom_pair[:, None, :] == dom_pair[None, :, :]).all(dim=-1) & (class_z1.unsqueeze(0) != class_z1.unsqueeze(1))    
+        idx_i, idx_j = torch.where(torch.triu(in_dom_pair_out_class))
+        
+        return torch.norm(z1[idx_i] - z1[idx_j], p=2) ** 2 / len(idx_i)
 
+        # -----------       
         # return torch.mean(torch.norm(z1, dim=1))
 
+        # -----------
         # sim = z1 @ z1.T
         # n = sim.shape[0]
         # n_pairs = n * (n - 1) / 2
         # return -torch.triu(sim, diagonal=1).sum() / n_pairs
 
-
-        P = z1.shape[0]
-        pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
-        return pair_sum / (P * (P - 1) / 2)
+        # -----------
+        # P = z1.shape[0]
+        # pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
+        # return pair_sum / (P * (P - 1) / 2)
 
 
 
