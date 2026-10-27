@@ -8,7 +8,8 @@ from utils.init_utils import get_algo, get_dataloader, get_random_search_configs
 
 def init_loader(cfgs, args):
     '''
-        set device and seed
+        Set device and seed. Note that RNG for data spliting and data loader are set in init_utils, these manual seed is mostly for init model weights and hyperparams.
+        This code is not 100% reproducible yet.
     '''
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.search > 0:

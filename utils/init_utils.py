@@ -24,9 +24,9 @@ algos_dict = {
 }
 
 datasets_dict = {
-    'Glasgow'   : Glasgow,
-    'GlasgowAge': GlasgowAge,
-    'SanCheck' : SanityCheck,
+    'Glasgow'       : Glasgow,
+    'GlasgowAge'    : GlasgowAge,
+    'SanityCheck'   : SanityCheck,
 }
 
 def get_random_seed(*args):
@@ -45,6 +45,7 @@ def get_dataloader(cfgs, args):
     dom_datasets = datasets_dict[cfgs['dataset']](cfgs)
     dom_datasets.set_cfgs()
 
+    # Warning: make_weights_for_balanced_classes() iterates through all train data to get weights, pre-calculate this to save time in initialization phase 
     if cfgs['test_dom'] == 'None':
         # This code is using train-valication domain split and sweep through all test domain combination
         for i_test_dom, test_dom in enumerate(dom_datasets):
