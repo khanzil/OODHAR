@@ -44,7 +44,7 @@ class Glasgow():
 
 class GlasgowAge(Glasgow):
     def __init__(self, cfgs):
-        super().__init__()
+        super().__init__(cfgs)
         self.num_workers = 4
         self.batch_size = 32
         self.num_steps = 2000
@@ -57,7 +57,7 @@ class GlasgowAge(Glasgow):
 
 class SanityCheck(Glasgow):
     def __init__(self, cfgs):
-        super().__init__()
+        super().__init__(cfgs)
         self.num_steps = 200
 
 

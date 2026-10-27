@@ -26,7 +26,7 @@ algos_dict = {
 datasets_dict = {
     'Glasgow'   : Glasgow,
     'GlasgowAge': GlasgowAge,
-    'San_check' : SanityCheck,
+    'SanCheck' : SanityCheck,
 }
 
 def get_random_seed(*args):
