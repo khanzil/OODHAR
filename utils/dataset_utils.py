@@ -85,7 +85,7 @@ class GlasgowFolderDataset(Dataset):
         
         x = torch.abs(torch.from_numpy(x)).float()
         if len(x.shape) == 2:
-            x.unsqueeze(0)
+            x = x.unsqueeze(0)
 
         y = torch.tensor(y).long()
         d = torch.tensor(d).long()

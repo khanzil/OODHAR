@@ -58,7 +58,7 @@ def get_dataloader(cfgs, args):
 
             val_batch_size = len(train_datasets)*dom_datasets.batch_size
 
-            
+
             train_loader = [InfiniteDataLoader(dataset=dataset,
                                                 weights=weights,
                                                 batch_size=dom_datasets.batch_size,
