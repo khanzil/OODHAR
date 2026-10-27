@@ -85,7 +85,7 @@ class GlasgowFolderDataset(Dataset):
         
         x = torch.abs(torch.from_numpy(x)).float()
         if len(x.shape) == 2:
-            raise ValueError(f"Expected input to have dim(n_samples,axis_1,axis_2), got dataset of size {x.shape} instead!")
+            x.unsqueeze(0)
 
         y = torch.tensor(y).long()
         d = torch.tensor(d).long()
