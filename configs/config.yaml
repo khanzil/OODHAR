@@ -5,26 +5,29 @@ load_checkpoint: None
 rootdir: ./dataset
 dataset: Glasgow
 feature_type: v_heatmap
+ckpt: None
+val_dom: None
+test_dom: None # this should either be 'None' or 'IID' or some integer 
+train_split: 0.85
+test_split: 0.1
+
+# dataset-specific hyperparams, these are set inside dataset_utils.py
 domain: folder # key to extract domain from .h5 file
 num_classes: 6
 num_train_domains: 6
 num_domains: 7
-val_dom: None
-test_dom: None
-train_split: 0.85
-test_split: 0.1
-
-# train:
 batch_size: 16
 num_steps: 2
 val_freq: 20
 ckpt_freq: 800
-ckpt: None
 
+
+# train:
 algorithm: IRM
 learning_rate: 5e-06
 weight_decay: 0.1
 loss_type: CrossEntropy
+
 # algorithms
 DANN:
   lambd: 0.2

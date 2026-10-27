@@ -4,43 +4,94 @@ import h5py
 import os
 from collections import Counter
 
-class Glasgow(Dataset):
-    def __init__(self, fold, cfgs):
-        super().__init__()
-        dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset'])
-        # Because we are using multiple loaders in this code, num_workers should be calculated and depends on dataset
-        self.num_workers = 2
+class Glasgow():
+    # This class acts as an multi-domain dataset holder
+    def __init__(self, cfgs):
         self.cfgs = cfgs
+        self.num_workers = 2    # Because we are using multiple loaders in this code, num_workers should be calculated and depends on dataset
+        self.num_val_workers = 4
+        self.batch_size = 16
+        self.num_steps = 1200
+        self.val_freq = 20
+        self.ckpt_freq = 100
+        self.domain_key = 'folder' # key to extract domain from .h5 file
+        self.num_classes = 6
+        self.num_train_domains = 6
+        self.num_domains = 7
+
+        dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset'])
+        folds = [fold for fold in sorted(os.listdir(dataset_dir)) if os.path.isdir(os.path.join(dataset_dir,fold))]
+        self.datasets = [GlasgowFolderDataset(dataset_dir,fold,cfgs['feature_type'],self.domain_key) for fold in folds]
+
+    def __len__(self):
+        return len(self.datasets)
+
+    def __getitem__(self, index):
+        return self.datasets[index]
+
+    def set_cfgs(self):
+        '''
+            Set the parameters into cfgs so that it got carried on to other functions 
+        '''
+        self.cfgs['batch_size'] = self.batch_size
+        self.cfgs['num_steps'] = self.num_steps
+        self.cfgs['val_freq'] = self.val_freq
+        self.cfgs['ckpt_freq'] = self.ckpt_freq
+        self.cfgs['domain_key'] = self.domain_key
+        self.cfgs['num_classes'] = self.num_classes
+        self.cfgs['num_train_domains'] = self.num_train_domains
+        self.cfgs['num_domains'] = self.num_domains
+
+class GlasgowAge(Glasgow):
+    def __init__(self, cfgs):
+        super().__init__()
+        self.num_workers = 4
+        self.batch_size = 32
+        self.num_steps = 2000
+        self.val_freq = 40
+        self.ckpt_freq = 200
+        self.domain_key = 'age_cat' # key to extract domain from .h5 file
+        self.num_classes = 6
+        self.num_train_domains = 2
+        self.num_domains = 3
+
+class SanityCheck(Glasgow):
+    def __init__(self, cfgs):
+        super().__init__()
+        self.num_steps = 200
+
+
+class GlasgowFolderDataset(Dataset):
+    def __init__(self, dataset_dir, fold,feature_type,domain_key):
+        super().__init__()
+        self.feature_type = feature_type
+        self.domain_key = domain_key
         self.fold = fold
         self.fold_dir = os.path.join(dataset_dir,fold)
-
         self.paths = [path for path in os.listdir(self.fold_dir) if os.path.isfile(os.path.join(self.fold_dir,path)) and ".h5" in path]
-
 
     def __len__(self):
         return len(self.paths)
     
     def __getitem__(self, index):
         path = self.paths[index]
-        sample, target, domain = self.file_loader_h5py(os.path.join(self.fold_dir, path))
-
-        return sample, target, domain
+        return self.file_loader_h5py(os.path.join(self.fold_dir, path))
 
     def file_loader_h5py(self, path):
         with h5py.File(path, 'r') as hf:
-            x = hf[self.cfgs['feature_type']][()] # this has size (samples, range, time) or (samples, range, vel)
+            x = hf[self.feature_type][()] # this has size (samples, range, time) or (samples, range, vel)
             y = hf['label'][()] - 1
-            d = hf[self.cfgs['domain']][()]
+            d = hf[self.domain_key][()]
         
         x = torch.abs(torch.from_numpy(x)).float()
         if len(x.shape) == 2:
-            x = x.unsqueeze(0)
+            raise ValueError(f"Expected input to have dim(n_samples,axis_1,axis_2), got dataset of size {x.shape} instead!")
 
         y = torch.tensor(y).long()
         d = torch.tensor(d).long()
 
-        return x, y, d
-        
+        return x, y, d    
+
 
 
 # These were taken from DomainBed

@@ -24,7 +24,9 @@ algos_dict = {
 }
 
 datasets_dict = {
-    'Glasgow'   : Glasgow
+    'Glasgow'   : Glasgow,
+    'GlasgowAge': GlasgowAge,
+    'San_check' : SanityCheck,
 }
 
 def get_random_seed(*args):
@@ -35,69 +37,53 @@ def get_algo(cfgs, args):
     return algos_dict[cfgs['algorithm']](cfgs, args)
 
 def get_dataloader(cfgs, args):
-    dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset']) # directory contains all data folders
-    dom_list = [fold for fold in sorted(os.listdir(dataset_dir)) if os.path.isdir(os.path.join(dataset_dir,fold))]
     loaders = []
-    dataset_num_workers = -1
     generator = torch.Generator()
     generator.manual_seed(args.seed)
     generator_loader = torch.Generator()
     generator_loader.manual_seed(args.search)
+    dom_datasets = datasets_dict[cfgs['dataset']](cfgs)
+    dom_datasets.set_cfgs()
 
     if cfgs['test_dom'] == 'None':
         # This code is using train-valication domain split and sweep through all test domain combination
-        for i_test_dom, test_dom in enumerate(dom_list):
-            train_datasets = []
-            val_datasets = []
-            test_datasets = []
+        for i_test_dom, test_dom in enumerate(dom_datasets):
+            in_splits = [random_split(dataset, [cfgs['train_split'], 1-cfgs['train_split']],generator=generator)
+                            for i_dataset, dataset in enumerate(dom_datasets) if i_dataset != i_test_dom]
+            
+            train_datasets = [(train,make_weights_for_balanced_classes(train)) for train,_ in in_splits]
+            val_datasets = [val for _,val in in_splits]
+            test_datasets = test_dom
 
-            for fold in dom_list:
-                dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
-                if dataset_num_workers == -1:
-                    dataset_num_workers = dataset.num_workers
-                if fold == test_dom:
-                    test_datasets.append(dataset)
 
-                else:
-                    train_dataset, val_dataset = random_split(dataset, 
-                                                              [cfgs['train_split'], 
-                                                               1-cfgs['train_split']],
-                                                              generator=generator)
-
-                    train_weights = make_weights_for_balanced_classes(train_dataset)
-                    train_datasets.append((train_dataset, train_weights))
-
-                    val_datasets.append(val_dataset)
-
-            val_batch_size = len(train_datasets)*cfgs['batch_size']
-            val_batch_size = 128
+            val_batch_size = len(train_datasets)*dom_datasets.batch_size
 
             
             train_loader = [InfiniteDataLoader(dataset=dataset,
                                                 weights=weights,
-                                                batch_size=cfgs['batch_size'],
-                                                num_workers=dataset_num_workers,
+                                                batch_size=dom_datasets.batch_size,
+                                                num_workers=dom_datasets.num_workers,
                                                 generator=generator_loader)
                              for dataset, weights in train_datasets]
             train_loader = zip(*train_loader)
 
             in_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
                                        batch_size=val_batch_size,
-                                       num_workers=args.num_workers,
+                                       num_workers=dom_datasets.num_val_workers,
                                        shuffle=False,
                                        pin_memory=True,
                                        persistent_workers=True)
 
             out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
                                         batch_size=val_batch_size,
-                                        num_workers=args.num_workers,
+                                        num_workers=dom_datasets.num_val_workers,
                                         shuffle=False,
                                         pin_memory=True,
                                         persistent_workers=True)
             
-            test_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in test_datasets]),
+            test_loader = DataLoader(dataset=test_datasets,
                                      batch_size=val_batch_size,
-                                     num_workers=args.num_workers,
+                                     num_workers=dom_datasets.num_val_workers,
                                      shuffle=False,
                                      pin_memory=True,
                                      persistent_workers=True)
@@ -106,109 +92,98 @@ def get_dataloader(cfgs, args):
 
 
     elif cfgs['test_dom'] == "IID":
-        train_datasets = []
-        val_datasets = []
-        test_datasets = []
+        in_splits = [random_split(dataset, [int(cfgs['train_split']*len(dataset)), 
+                                         len(dataset)-int(cfgs['train_split']*len(dataset))-int(cfgs['test_split']*len(dataset)),
+                                         int(cfgs['test_split']*len(dataset))], generator=generator)
+                    for i_dataset, dataset in enumerate(dom_datasets)]
+        
+        train_datasets = [(train,make_weights_for_balanced_classes(train)) for train,_,_ in in_splits]
+        val_datasets = [val for _,val,_ in in_splits]
+        test_datasets = [test for _,_,test in in_splits]
 
-        for fold in dom_list:
-            dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
 
-            train_dataset, val_dataset, test_dataset = random_split(dataset, 
-                                                                    [int(cfgs['train_split']*len(dataset)), 
-                                                                     len(dataset)-int(cfgs['train_split']*len(dataset))-int(cfgs['test_split']*len(dataset)),
-                                                                     int(cfgs['test_split']*len(dataset))],
-                                                                    generator=generator)
+        val_batch_size = len(train_datasets)*dom_datasets.batch_size
 
-            train_weights = make_weights_for_balanced_classes(train_dataset)
-
-            train_datasets.append((train_dataset, train_weights))
-            val_datasets.append(val_dataset)
-            test_datasets.append(test_dataset)
-
-        val_batch_size = len(train_datasets)*cfgs['batch_size']
-
-        train_loaders = [InfiniteDataLoader(dataset=dataset,
+            
+        train_loader = [InfiniteDataLoader(dataset=dataset,
                                             weights=weights,
-                                            batch_size=cfgs['batch_size'],
-                                            num_workers=int(args.num_workers/len(train_dataset)),
+                                            batch_size=dom_datasets.batch_size,
+                                            num_workers=dom_datasets.num_workers,
                                             generator=generator_loader)
-                        for dataset, weights in train_datasets]
-        train_loaders = zip(*train_loaders)
+                            for dataset, weights in train_datasets]
+        train_loader = zip(*train_loader)
 
-        in_val_loaders = [DataLoader(dataset=dataset,
-                                     batch_size=val_batch_size,
-                                     num_workers=args.num_workers,
-                                     shuffle=False,
-                                     pin_memory=True)
-                          for dataset, _ in train_datasets]
-        out_val_loaders = [DataLoader(dataset=dataset,
-                                      batch_size=val_batch_size,
-                                      num_workers=args.num_workers,
-                                      shuffle=False,
-                                      pin_memory=True)
-                           for dataset in val_datasets]
-        test_loaders = [DataLoader(dataset=dataset,
-                                   batch_size=val_batch_size,
-                                   num_workers=args.num_workers,
-                                   shuffle=False,
-                                   pin_memory=True)
-                        for dataset in test_datasets]
+        in_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
 
-        loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))        
+        out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
+        
+        test_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in test_datasets]),
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
 
+
+        loaders.append((train_loader, in_val_loader, out_val_loader, test_loader))        
+
+
+    elif cfgs['test_dom'] in range(len(dom_datasets)):
+        # Single test_dom case
+        in_splits = [random_split(dataset, [cfgs['train_split'], 1-cfgs['train_split']],generator=generator)
+                                    for i_dataset, dataset in enumerate(dom_datasets) if i_dataset != cfgs['test_dom']]
+                    
+        train_datasets = [(train,make_weights_for_balanced_classes(train)) for train,_ in in_splits]
+        val_datasets = [val for _,val in in_splits]
+        test_datasets = dom_datasets[cfgs['test_dom']]
+
+
+        val_batch_size = len(train_datasets)*dom_datasets.batch_size
+
+        
+        train_loader = [InfiniteDataLoader(dataset=dataset,
+                                            weights=weights,
+                                            batch_size=dom_datasets.batch_size,
+                                            num_workers=dom_datasets.num_workers,
+                                            generator=generator_loader)
+                            for dataset, weights in train_datasets]
+        train_loader = zip(*train_loader)
+
+        in_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset, _ in train_datasets]),
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
+
+        out_val_loader = DataLoader(dataset=ConcatDataset([dataset for dataset in val_datasets]),
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
+        
+        test_loader = DataLoader(dataset=test_datasets,
+                                    batch_size=val_batch_size,
+                                    num_workers=dom_datasets.num_val_workers,
+                                    shuffle=False,
+                                    pin_memory=True,
+                                    persistent_workers=True)
+
+        loaders.append((train_loader, in_val_loader, out_val_loader, test_loader))
 
     else:
-        # Single test_dom case
-        train_datasets = []
-        val_datasets = []
-        test_datasets = []
-
-        for fold in dom_list:
-            dataset = datasets_dict[cfgs['dataset']](fold, cfgs)
-            if fold[0] in cfgs['test_dom']:
-                test_datasets.append(dataset)
-
-            else:
-                train_dataset, val_dataset = random_split(dataset, 
-                                                            [int(cfgs['train_split']*len(dataset)), 
-                                                             len(dataset)-int(cfgs['train_split'])*len(dataset)],
-                                                            generator=generator)
-
-                train_weights = make_weights_for_balanced_classes(train_dataset)
-
-                train_datasets.append((train_dataset, train_weights))
-                val_datasets.append(val_dataset)
-
-        val_batch_size = len(train_datasets)*cfgs['batch_size']
-
-        train_loaders = [InfiniteDataLoader(dataset=dataset,
-                                            weights=weights,
-                                            batch_size=cfgs['batch_size'],
-                                            num_workers=int(args.num_workers/len(train_dataset)),
-                                            generator=generator_loader)
-                         for dataset, weights in train_datasets]
-        train_loaders = zip(*train_loaders)
-
-        in_val_loaders = [DataLoader(dataset=dataset,
-                                     batch_size=val_batch_size,
-                                     num_workers=args.num_workers,
-                                     shuffle=False,
-                                     pin_memory=True)
-                          for dataset, _ in train_datasets]
-        out_val_loaders = [DataLoader(dataset=dataset,
-                                      batch_size=val_batch_size,
-                                      num_workers=args.num_workers,
-                                      shuffle=False,
-                                     pin_memory=True)
-                           for dataset in val_datasets]
-        test_loaders = [DataLoader(dataset=dataset,
-                                   batch_size=val_batch_size,
-                                   num_workers=args.num_workers,
-                                   shuffle=False,
-                                   pin_memory=True)
-                        for dataset in test_datasets]
-
-        loaders.append((train_loaders, in_val_loaders, out_val_loaders, test_loaders))
+        raise ValueError(f"Test domain {cfgs['test_dom']} not available!")
 
     return loaders
        
