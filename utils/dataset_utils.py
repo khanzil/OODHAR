@@ -80,7 +80,7 @@ class GlasgowFolderDataset(Dataset):
         return self.file_loader_h5py(os.path.join(self.fold_dir, path))
 
     def get_sample_weights(self):
-        all_y = [int(path[path.find('A')+1:path.find('R')])-1 for path in self.paths]
+        all_y = torch.tensor([int(path[path.find('A')+1:path.find('R')])-1 for path in self.paths])
         counts = torch.bincount(all_y)
         return 1.0 / counts[all_y].float()
 
