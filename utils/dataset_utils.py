@@ -84,7 +84,7 @@ class GlasgowFolderDataset(Dataset):
         for path in self.paths:
             all_y.append(int(path[path.find('A')+1:path.find('R')]))
 
-        y_weight = [1/float(sum(all_y = i_class)) for i_class in sorted(list(set(all_y)))]
+        y_weight = [1/float(sum(all_y == i_class)) for i_class in sorted(list(set(all_y)))]
 
         return torch.tensor([y_weight[y] for y in all_y])
 
