@@ -2,23 +2,26 @@ import torch
 from torch.utils.data import Dataset
 import h5py
 import os
+import numpy as np
 from collections import Counter
 
 class Glasgow():
     # This class acts as an multi-domain dataset holder
+
+    # Subclass can override these
+    num_workers = 2    # Because we are using multiple loaders in this code, num_workers should be calculated and depends on dataset
+    num_val_workers = 4
+    batch_size = 16
+    num_steps = 1200
+    val_freq = 20
+    ckpt_freq = 100
+    domain_key = 'folder' # key to extract domain from .h5 file
+    num_classes = 6
+    num_train_domains = 6
+    num_domains = 7
+
     def __init__(self, cfgs):
         self.cfgs = cfgs
-        self.num_workers = 2    # Because we are using multiple loaders in this code, num_workers should be calculated and depends on dataset
-        self.num_val_workers = 4
-        self.batch_size = 16
-        self.num_steps = 1200
-        self.val_freq = 20
-        self.ckpt_freq = 100
-        self.domain_key = 'folder' # key to extract domain from .h5 file
-        self.num_classes = 6
-        self.num_train_domains = 6
-        self.num_domains = 7
-
         dataset_dir = os.path.join(cfgs['rootdir'], cfgs['dataset'])
         folds = [fold for fold in sorted(os.listdir(dataset_dir)) if os.path.isdir(os.path.join(dataset_dir,fold))]
         self.datasets = [GlasgowFolderDataset(dataset_dir,fold,cfgs['feature_type'],self.domain_key) for fold in folds]
@@ -43,17 +46,16 @@ class Glasgow():
         self.cfgs['num_domains'] = self.num_domains
 
 class GlasgowAge(Glasgow):
-    def __init__(self, cfgs):
-        super().__init__(cfgs)
-        self.num_workers = 4
-        self.batch_size = 32
-        self.num_steps = 2000
-        self.val_freq = 40
-        self.ckpt_freq = 200
-        self.domain_key = 'age_cat' # key to extract domain from .h5 file
-        self.num_classes = 6
-        self.num_train_domains = 2
-        self.num_domains = 3
+    num_workers = 4
+    batch_size = 32
+    num_steps = 2000
+    val_freq = 40
+    ckpt_freq = 200
+    domain_key = 'age_cat' # key to extract domain from .h5 file
+    num_classes = 6
+    num_train_domains = 2
+    num_domains = 3
+
 
 class SanityCheck(Glasgow):
     def __init__(self, cfgs):
@@ -62,7 +64,7 @@ class SanityCheck(Glasgow):
 
 
 class GlasgowFolderDataset(Dataset):
-    def __init__(self, dataset_dir, fold,feature_type,domain_key):
+    def __init__(self, dataset_dir, fold, feature_type, domain_key):
         super().__init__()
         self.feature_type = feature_type
         self.domain_key = domain_key
@@ -76,6 +78,15 @@ class GlasgowFolderDataset(Dataset):
     def __getitem__(self, index):
         path = self.paths[index]
         return self.file_loader_h5py(os.path.join(self.fold_dir, path))
+
+    def get_sample_weights(self):
+        all_y = []
+        for path in self.paths:
+            all_y.append(int(path[path.find('A')+1:path.find('R')]))
+
+        y_weight = [1/float(sum(all_y = i_class)) for i_class in sorted(list(set(all_y)))]
+
+        return torch.tensor([y_weight[y] for y in all_y])
 
     def file_loader_h5py(self, path):
         with h5py.File(path, 'r') as hf:
@@ -140,7 +151,7 @@ class InfiniteDataLoader:
     def __len__(self):
         raise ValueError
 
-
+# Modified from DomainBed
 def make_weights_for_balanced_classes(dataset):
     counts = Counter()
     classes = []

@@ -4,12 +4,11 @@ import torch
 import numpy as np
 import shutil
 import sys
-from utils.init_utils import get_algo, get_dataloader, get_random_search_configs, get_random_seed
+from utils.init_utils import get_algo, get_domain_datasets, get_dataloaders, get_random_search_configs, get_random_seed
 
 def init_loader(cfgs, args):
     '''
         Set device and seed. Note that RNG for data spliting and data loader are set in init_utils, these manual seed is mostly for init model weights and hyperparams.
-        This code is not 100% reproducible yet.
     '''
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.search > 0:
@@ -30,6 +29,9 @@ def init_loader(cfgs, args):
             torch.cuda.manual_seed_all(args.search)
         torch.manual_seed(args.search)
         np.random.seed(args.search)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 
     print(f"\nRNG state seed: {args.search}\n")
 
@@ -51,12 +53,20 @@ def init_loader(cfgs, args):
         yaml = YAML()
         with open(os.path.join(results_dir, f"config_{cfgs['train_id']}.yaml"), 'w') as f:
             yaml.dump(cfgs, f)
-            yaml.dump(cfgs, sys.stdout)
+
+    '''
+        get list of domain datasets
+    '''    
+    dom_datasets = get_domain_datasets(cfgs,args)
+    # Dump cfgs to console
+    yaml = YAML()
+    yaml.dump(cfgs, sys.stdout)
 
     '''
         get dataloader
     '''
-    loaders = get_dataloader(cfgs, args)
+    loaders = get_dataloaders(cfgs, args, dom_datasets)
+
 
     return loaders, results_dir, ckpts_dir
 

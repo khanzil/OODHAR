@@ -36,14 +36,17 @@ def get_random_seed(*args):
 def get_algo(cfgs, args):
     return algos_dict[cfgs['algorithm']](cfgs, args)
 
-def get_dataloader(cfgs, args):
+def get_domain_datasets(cfgs, args):
+    dom_datasets = datasets_dict[cfgs['dataset']](cfgs)
+    dom_datasets.set_cfgs()
+    return dom_datasets
+
+def get_dataloaders(cfgs, args, dom_datasets):
     loaders = []
     generator = torch.Generator()
     generator.manual_seed(args.seed)
     generator_loader = torch.Generator()
     generator_loader.manual_seed(args.search)
-    dom_datasets = datasets_dict[cfgs['dataset']](cfgs)
-    dom_datasets.set_cfgs()
 
     # Warning: make_weights_for_balanced_classes() iterates through all train data to get weights, pre-calculate this to save time in initialization phase 
     if cfgs['test_dom'] == 'None':
