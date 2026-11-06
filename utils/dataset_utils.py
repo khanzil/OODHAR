@@ -212,12 +212,13 @@ def make_weights_for_balanced_classes(dataset):
 
     if isinstance(dataset, torch.utils.data.Subset):
         try:
-            return dataset.dataset.weights[dataset.indices]
+            idx = torch.tensor(dataset.indices)
+            return dataset.dataset.get_sample_weights(idx)
         except:
             pass
     if isinstance(dataset, torch.utils.data.Dataset):
         try:
-            return dataset.weights
+            return dataset.get_sample_weights(torch.arange(len(dataset)))
         except:
             pass
 
