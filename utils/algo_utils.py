@@ -91,7 +91,7 @@ class Algorithm():
         for dic in loss_list:
             json.dump(dic, output_file)
             output_file.write("\n")
-        
+
         return loss_list
 
     def predict(self, x):
@@ -128,12 +128,12 @@ class ERM(Algorithm):
         self.optimizer = torch.optim.Adam(self.network.parameters(), 
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
-        
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
-       
+
         if self.cuda:
             self.featurizer.cuda()
             self.classifier.cuda()
@@ -176,7 +176,7 @@ class ERM(Algorithm):
 
                 pred = self.predict(all_x)
                 _, pred = pred.max(1) # same as np.argmax()
-                
+
                 corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
                 acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
                 loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
@@ -185,7 +185,7 @@ class ERM(Algorithm):
 
         self.featurizer.train()
         self.classifier.train()
-        
+
         avg_acc = sum(acc) / sum(loader_len)
         
         loader_len = torch.clamp(loader_len, min=1)
