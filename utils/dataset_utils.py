@@ -222,13 +222,13 @@ def make_weights_for_balanced_classes(dataset):
         except:
             pass
 
-    # all_y = []
-    # for _, y, _ in dataset:
-    #     all_y.append(y)
-    # counts = torch.bincount(torch.Tensor(all_y))
-    # weights = 1.0 / counts[all_y].float()
+    all_y = []
+    for _, y, _ in dataset:
+        all_y.append(y)
+    counts = torch.bincount(torch.Tensor(all_y))
+    weights = 1.0 / counts[all_y].float()
 
-    # return weights
+    return weights
 
 
 
