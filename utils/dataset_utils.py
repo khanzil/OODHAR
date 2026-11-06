@@ -77,7 +77,6 @@ class GlasgowFolderDataset(Dataset):
         self.fold = fold
         self.fold_dir = os.path.join(dataset_dir,fold)
         self.paths = [path for path in os.listdir(self.fold_dir) if os.path.isfile(os.path.join(self.fold_dir,path)) and ".h5" in path]
-        self.weights = self.get_sample_weights()
 
     def __len__(self):
         return len(self.paths)
@@ -86,8 +85,8 @@ class GlasgowFolderDataset(Dataset):
         path = self.paths[index]
         return self.file_loader_h5py(os.path.join(self.fold_dir, path))
 
-    def get_sample_weights(self):
-        all_y = torch.tensor([int(path[path.find('A')+1:path.find('R')])-1 for path in self.paths])
+    def get_sample_weights(self, idx):
+        all_y = torch.tensor([int(path[path.find('A')+1:path.find('R')])-1 for path in self.paths[idx]])
         counts = torch.bincount(all_y)
         return 1.0 / counts[all_y].float()
 
