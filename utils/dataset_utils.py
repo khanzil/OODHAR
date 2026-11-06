@@ -77,6 +77,7 @@ class GlasgowFolderDataset(Dataset):
         self.fold = fold
         self.fold_dir = os.path.join(dataset_dir,fold)
         self.paths = [path for path in os.listdir(self.fold_dir) if os.path.isfile(os.path.join(self.fold_dir,path)) and ".h5" in path]
+        self.weights = self.get_sample_weights()
 
     def __len__(self):
         return len(self.paths)
@@ -210,14 +211,22 @@ def make_weights_for_balanced_classes(dataset):
     # for i, y in enumerate(classes):
     #     weights[i] = weight_per_class[int(y)]
 
-    # try:
-    weights = dataset.get_sample_weights()
-    # except:
-    #     all_y = []
-    #     for _, y, _ in dataset:
-    #         all_y.append(y)
-    #     counts = torch.bincount(torch.Tensor(all_y))
-    #     weights = 1.0 / counts[all_y].float()
+    if isinstance(dataset, torch.utils.data.Subset):
+        try:
+            return dataset.dataset.weights[dataset.indices]
+        except:
+            pass
+    if isinstance(dataset, torch.utils.data.Dataset):
+        try:
+            return dataset.weights
+        except:
+            pass
+
+    all_y = []
+    for _, y, _ in dataset:
+        all_y.append(y)
+    counts = torch.bincount(torch.Tensor(all_y))
+    weights = 1.0 / counts[all_y].float()
 
     return weights
 
