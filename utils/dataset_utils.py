@@ -76,7 +76,7 @@ class GlasgowFolderDataset(Dataset):
         self.domain_key = domain_key
         self.fold = fold
         self.fold_dir = os.path.join(dataset_dir,fold)
-        self.paths = [path for path in os.listdir(self.fold_dir) if os.path.isfile(os.path.join(self.fold_dir,path)) and ".h5" in path]
+        self.paths = np.array([path for path in os.listdir(self.fold_dir) if os.path.isfile(os.path.join(self.fold_dir,path)) and ".h5" in path])
 
     def __len__(self):
         return len(self.paths)
