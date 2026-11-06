@@ -15,6 +15,7 @@ def stream(proc, gpu_id):
 
 if __name__ == '__main__':
     # cmd parser
+    # I don't add 'dataset' argument since I'm working on Kaggle, which makes rootdir varies.
     parser = argparse.ArgumentParser(description="Sweep for hyperparameter search",add_help=True)
     parser.add_argument('-c', '--config_file', help='Specify config file', metavar='FILE')
     parser.add_argument('--n_trials', type=int, default=3, help='Number of trials for each algo, affect how data is divided')

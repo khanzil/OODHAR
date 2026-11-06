@@ -4,14 +4,28 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-detail = "Algo" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed avg, "Algo" for all algo avg
-
-# root_dir = './results/Glasgow/Room'
-# algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
+detail = "Algo" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed best, "Algo" for all algo avg
 
 root_dir = './results/Glasgow/Age'
-# algo_list = ['ERM', 'DANN', 'IRM', 'VRex', 'GroupDRO', 'SAM', 'Fish', 'Fishr', 'CFSM', 'CORAL', 'MMD']
-algo_list = ['CFSM', 'CFSM onehot', 'CFSM wo mixup']
+algo_list = [
+            #  'ERM', 
+            #  'DANN', 
+            #  'IRM', 
+            #  'VRex', 
+            #  'GroupDRO', 
+            #  'SAM', 
+            #  'Fish', 
+            #  'Fishr', 
+            #  'CORAL', 
+            #  'MMD', 
+             'CFSM', 
+             'CFSM onehot', 
+             'CFSM wo mixup', 
+            #  'CFSMp1', 
+            #  'CFSMp11', 
+             'CFSMp2' 
+            ]
+
 
 
 
@@ -51,7 +65,7 @@ class search_results():
                         for line in file:
                             my_dict = json.loads(line)
                             result_list.append(my_dict)
-                    
+
                     for key in result_list[-1].keys():
                         if key in dom_result.keys():
                             dom_result[key] += result_list[-1][key]
@@ -61,7 +75,7 @@ class search_results():
                     dom_result = {k: dom_result[k] for k in sorted(dom_result.keys(), key=sort_key)}
 
                     self.result[i_seed][i_search].append(dom_result)
-                   
+
     def get_search_avg(self, return_best=True):
         self.avg_result = [] # structure: list_of_seeds[list_of_searches[dict_of_avg{}]]
         if return_best:
@@ -81,9 +95,9 @@ class search_results():
 
                 for key in search_avg_result.keys():
                     search_avg_result[key] /= len(self.result[i_seed][i_search])
-                
+
                 self.avg_result[i_seed].append(search_avg_result)
-                
+
                 if return_best:
                     if search_avg_result['val_avg_acc'] > best_val:
                         best_val = search_avg_result['val_avg_acc']
@@ -100,6 +114,7 @@ class search_results():
                         'tr_avg_acc': [],
                         'val_avg_acc': [],
                         'test_acc': []}
+
             for i_seed, (_, seed) in enumerate(self.seed_best):
                 for key in seed.keys():
                     algo_avg[key].append(seed[key])
@@ -132,7 +147,7 @@ if __name__ == '__main__':
                     for i_test_dom, test_dom in enumerate(search):
                         print(f"{algo}".ljust(30), end="")
                         print(f"seed{i_seed}".ljust(15), end="")
-                        print(f"search{i_search}".ljust(15), end="")
+                        print(f"search{i_search+1}".ljust(15), end="")
                         print(f"test_dom_{i_test_dom}".ljust(15), end="")
 
                         for key in test_dom.keys():
@@ -148,7 +163,7 @@ if __name__ == '__main__':
                 for i_search, search in enumerate(seed):
                     print(f"{algo}".ljust(30), end="")
                     print(f"seed{i_seed}".ljust(15), end="")
-                    print(f"search{i_search}".ljust(15), end="")
+                    print(f"search{i_search+1}".ljust(15), end="")
 
                     for key in search.keys():
                         if 'acc' in key:
