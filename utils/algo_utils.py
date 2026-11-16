@@ -1766,7 +1766,7 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
+        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1)) + 2
 
     def mixup_loss(self, z_cate, z_env, all_y, all_d, pred, use_onehot=True, num_classes=None):
         out_dom_pair = all_d.unsqueeze(0) != all_d.unsqueeze(1)
