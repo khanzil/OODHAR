@@ -1750,12 +1750,11 @@ class CFSM(Algorithm):
 
         in_dom_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (~self_pair)
 
-        # if not pos_pair.any():
-        #     return torch.tensor(0, device=all_y.device)
+        if not pos_pair.any():
+            return torch.tensor(0, device=all_y.device)
         
-        # threshold = torch.mean(cos_sim[pos_pair]) * self.theta
-        # neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
-        neg_pair = (~pos_pair) & (~self_pair) & in_dom_pair
+        threshold = torch.mean(cos_sim[pos_pair]) * self.theta
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
@@ -1840,7 +1839,7 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        # loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d) 
+        loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d) 
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
@@ -1854,7 +1853,7 @@ class CFSM(Algorithm):
                 'loss_class'    : loss_class.item(),
                 'loss_domain'   : loss_domain.item(),
                 'loss_orth'     : loss_orth.item(),
-                # 'loss_cross_cl' : loss_cross_class.item(),
+                'loss_cross_cl' : loss_cross_class.item(),
                 'loss_cross_sa' : loss_cross_sample.item(),
                 'loss_mixup'    : loss_mixup.item(),
                 }
