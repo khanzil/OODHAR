@@ -1750,11 +1750,12 @@ class CFSM(Algorithm):
 
         in_dom_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (~self_pair)
 
-        if not pos_pair.any():
-            return torch.tensor(0, device=all_y.device)
+        # if not pos_pair.any():
+        #     return torch.tensor(0, device=all_y.device)
         
-        threshold = torch.mean(cos_sim[pos_pair]) * self.theta
-        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
+        # threshold = torch.mean(cos_sim[pos_pair]) * self.theta
+        # neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
+        neg_pair = (~pos_pair) & (~self_pair) & in_dom_pair
 
         if not neg_pair.any():
             return torch.tensor(0, device=all_y.device)
@@ -1766,7 +1767,7 @@ class CFSM(Algorithm):
 
         prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
 
-        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1)) + 2
+        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
     def mixup_loss(self, z_cate, z_env, all_y, all_d, pred, use_onehot=True, num_classes=None):
         out_dom_pair = all_d.unsqueeze(0) != all_d.unsqueeze(1)
