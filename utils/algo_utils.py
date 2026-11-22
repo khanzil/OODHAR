@@ -1764,7 +1764,8 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
-        prototype = nn.functional.normalize(self.ClassPrototype((self.classifier[-1].weight)), p=2, dim=1)
+        # prototype = nn.functional.normalize(self.ClassPrototype(self.classifier[-1].weight), p=2, dim=1)
+        prototype = nn.functional.normalize(self.classifier[-1].weight, p=2, dim=1)
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
@@ -1790,13 +1791,16 @@ class CFSM(Algorithm):
         out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
         idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
         z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
-        
+
+        # z_mean_per_class = [torch.mean(z_cate_norm[i_class]) for i_class in torch.where(torch.unique(all_y))]
         # -----------
         dom_pair = torch.stack((all_d[idx_i], all_d[idx_i]), axis=1)
         class_z1 = all_y[idx_i]
         in_dom_pair_out_class = (dom_pair[:, None, :] == dom_pair[None, :, :]).all(dim=-1) & (class_z1.unsqueeze(0) != class_z1.unsqueeze(1))    
         idx_i, idx_j = torch.where(torch.triu(in_dom_pair_out_class))
         
+
+
         return torch.norm(z1[idx_i] - z1[idx_j], p=2) ** 2 / len(idx_i)
 
         # -----------       
@@ -1843,7 +1847,7 @@ class CFSM(Algorithm):
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
-        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup # + self.lambd_cross_class * loss_cross_class
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup + self.lambd_cross_class * loss_cross_class
 
         self.optimizer.zero_grad()
         loss.backward()
