@@ -1764,8 +1764,8 @@ class CFSM(Algorithm):
         z_neg = z_cate_norm[idx_j]
         y_pos = all_y[idx_i]
 
-        # prototype = nn.functional.normalize(self.ClassPrototype(self.classifier[-1].weight), p=2, dim=1)
-        prototype = nn.functional.normalize(self.classifier[-1].weight, p=2, dim=1)
+        prototype = nn.functional.normalize(self.ClassPrototype(self.classifier[-1].weight), p=2, dim=1)
+        # prototype = nn.functional.normalize(self.classifier[-1].weight, p=2, dim=1)
 
         return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
 
@@ -1794,7 +1794,7 @@ class CFSM(Algorithm):
 
         # z_mean_per_class = [torch.mean(z_cate_norm[i_class]) for i_class in torch.where(torch.unique(all_y))]
         # -----------
-        dom_pair = torch.stack((all_d[idx_i], all_d[idx_i]), axis=1)
+        dom_pair = torch.stack((all_d[idx_i], all_d[idx_j]), axis=1)
         class_z1 = all_y[idx_i]
         in_dom_pair_out_class = (dom_pair[:, None, :] == dom_pair[None, :, :]).all(dim=-1) & (class_z1.unsqueeze(0) != class_z1.unsqueeze(1))    
         idx_i, idx_j = torch.where(torch.triu(in_dom_pair_out_class))
