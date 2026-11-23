@@ -1782,40 +1782,68 @@ class CFSM(Algorithm):
             ground_truth = pred[idx_i]
 
         return nn.functional.mse_loss(pred_mixed, ground_truth.float())
-        torch.randint()
 
     def cross_class_loss(self, z_cate, all_y, all_d):
-        z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
-        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        z = nn.functional.normalize(z_cate, p=2, dim=1)
+        _, d_idx = torch.unique(all_d, return_inverse=True)
+        _, y_idx = torch.unique(all_y, return_inverse=True)
+        K, C, Fd = int(d_idx.max()) + 1, int(y_idx.max()) + 1, z.size(1)
 
-        out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
-        idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
-        z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
+        # M[k, c]: class-domain means
+        flat = d_idx * C + y_idx
+        sums = z.new_zeros(K * C, Fd).index_add(0, flat, z)
+        cnt = torch.bincount(flat, minlength=K * C).to(z.dtype)
+        M = (sums / cnt.clamp_min(1).unsqueeze(1)).view(K, C, Fd)
+        present = (cnt > 0).view(K, C)
 
-        # z_mean_per_class = [torch.mean(z_cate_norm[i_class]) for i_class in torch.where(torch.unique(all_y))]
-        # -----------
-        dom_pair = torch.stack((all_d[idx_i], all_d[idx_j]), axis=1)
-        class_z1 = all_y[idx_i]
-        in_dom_pair_out_class = (dom_pair[:, None, :] == dom_pair[None, :, :]).all(dim=-1) & (class_z1.unsqueeze(0) != class_z1.unsqueeze(1))    
-        idx_i, idx_j = torch.where(torch.triu(in_dom_pair_out_class))
-        
+        # all D_k^{c,c'} at once: (K, C, C, Fd)
+        D = M[:, :, None] - M[:, None, :]
+        ok = (present[:, :, None] & present[:, None, :]).to(z.dtype)   # (K, C, C)
+        k = ok.sum(0)                                                   # domains per class pair
+
+        Dbar = (D * ok[..., None]).sum(0) / k.clamp_min(1)[..., None]   # mean over domains, per pair
+        sq = (((D - Dbar) ** 2).sum(-1) * ok).sum(0)                    # (C, C)
+
+        valid = (k >= 2) & torch.ones(C, C, dtype=torch.bool, device=z.device).triu(1)
+        if not valid.any():
+            return z.new_zeros(())
+        return (sq[valid] / (k[valid] - 1)).mean()
 
 
-        return torch.norm(z1[idx_i] - z1[idx_j], p=2) ** 2 / len(idx_i)
+    # def cross_class_loss(self, z_cate, all_y, all_d):
+    #     z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+    #     self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
 
-        # -----------       
-        # return torch.mean(torch.norm(z1, dim=1))
+    #     out_dom_in_class_pair = (all_d.unsqueeze(0) != all_d.unsqueeze(1)) & (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & ~self_pair
+    #     idx_i, idx_j = torch.where(torch.triu(out_dom_in_class_pair))
+    #     z1 = z_cate_norm[idx_i] - z_cate_norm[idx_j] # z_c_pos + z_s1_pos - z_c_pos - z_s2_pos = z_s1_pos - z_s2_pos
 
-        # -----------
-        # sim = z1 @ z1.T
-        # n = sim.shape[0]
-        # n_pairs = n * (n - 1) / 2
-        # return -torch.triu(sim, diagonal=1).sum() / n_pairs
+    #     # z_mean_per_class = [torch.mean(z_cate_norm[i_class]) for i_class in torch.where(torch.unique(all_y))]
+    #     # -----------
+    #     dom_pair = torch.stack((all_d[idx_i], all_d[idx_j]), axis=1)
+    #     class_z1 = all_y[idx_i]
+    #     in_dom_pair_out_class = (dom_pair[:, None, :] == dom_pair[None, :, :]).all(dim=-1) & (class_z1.unsqueeze(0) != class_z1.unsqueeze(1))
 
-        # -----------
-        # P = z1.shape[0]
-        # pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
-        # return pair_sum / (P * (P - 1) / 2)
+    #     if not in_dom_pair_out_class.any():
+    #         return torch.tensor(0, device=all_y.device)
+
+    #     idx_i, idx_j = torch.where(torch.triu(in_dom_pair_out_class))
+
+    #     return torch.norm(z1[idx_i] - z1[idx_j], p=2) ** 2 / len(idx_i)
+
+    #     # -----------       
+    #     # return torch.mean(torch.norm(z1, dim=1))
+
+    #     # -----------
+    #     # sim = z1 @ z1.T
+    #     # n = sim.shape[0]
+    #     # n_pairs = n * (n - 1) / 2
+    #     # return -torch.triu(sim, diagonal=1).sum() / n_pairs
+
+    #     # -----------
+    #     # P = z1.shape[0]
+    #     # pair_sum = (P - 2) * z1.pow(2).sum() + z1.sum(dim=0).pow(2).sum()
+    #     # return pair_sum / (P * (P - 1) / 2)
 
 
 
