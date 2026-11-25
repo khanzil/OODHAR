@@ -80,7 +80,7 @@ class GlasgowFolderDataset(Dataset):
 
     def __len__(self):
         return len(self.paths)
-    
+
     def __getitem__(self, index):
         path = self.paths[index]
         return self.file_loader_h5py(os.path.join(self.fold_dir, path))
