@@ -2140,10 +2140,11 @@ class CFSMp3(Algorithm):
         mask = validD[ii] & validD[jj]                            # (Q, P)
 
         if not mask.any():                                        # e.g. only one domain present
-            return z.new_zeros(())
-        
-        return diff.pow(2).sum(-1)[mask]   
+            return torch.tensor([0], device=all_y.device)
 
+        loss = diff.pow(2).sum(-1)[mask]
+        return loss.mean()
+    
 
     def update(self, minibatches, step, unlabeled=None):
         self.featurizer.train()
