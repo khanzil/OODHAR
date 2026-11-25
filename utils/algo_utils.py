@@ -1807,7 +1807,7 @@ class CFSM(Algorithm):
         valid = present[:, :, None] & present[:, None, :]         # both classes in domain i
         diff = s[:, None] - s[None, :]                            # (ND, ND, C, C)
         mask = valid[:, None] & valid[None, :]
-        mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=Z.device), 1)[:, :, None, None]
+        mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=z.device), 1)[:, :, None, None]
         mask &= ~torch.eye(C, dtype=torch.bool, device=Z.device)[None, None]
 
         if not mask.any():                                        # e.g. only one domain present
