@@ -1798,17 +1798,17 @@ class CFSM(Algorithm):
         W = self.classifier[-1].weight
 
         # projected class gaps per domain: s[i, c, k] = D_i^{ck} . v^{ck}
-        gap = mu[:, :, None, :] - mu[:, None, :, :]               # (ND, C, C, dim)
-        v = W[:, None, :].expand(C, C, dim)
 
-        s = (gap * v).sum(-1)                                     # (ND, C, C)
-        valid = present[:, :, None] & present[:, None, :]
+        # M[i, a, b] = w^a . mu[i, b]
+        M = torch.einsum("ad,ibd->iab", W, mu)                    # (ND, C, C)
+        # s[i, c, k] = w^c . (mu[i,c] - mu[i,k]) = D_i^{ck} . w^c
+        s = M.diagonal(dim1=1, dim2=2).unsqueeze(2) - M           # (ND, C, C)
 
-        # differences across domain pairs i<j and class pairs c<k
+        valid = present[:, :, None] & present[:, None, :]         # both classes in domain i
         diff = s[:, None] - s[None, :]                            # (ND, ND, C, C)
         mask = valid[:, None] & valid[None, :]
-        mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=z.device), 1)[:, :, None, None]
-        mask &= torch.triu(torch.ones(C, C, dtype=torch.bool, device=z.device), 1)[None, None]
+        mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=Z.device), 1)[:, :, None, None]
+        mask &= ~torch.eye(C, dtype=torch.bool, device=Z.device)[None, None]
 
         if not mask.any():                                        # e.g. only one domain present
             return z.new_zeros(())
