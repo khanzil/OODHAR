@@ -2067,9 +2067,7 @@ class CFSMp3(Algorithm):
             raise NotImplementedError(f"{cfgs['loss_type_d']} is not implemented")
 
         if self.cuda:
-            self.featurizer.cuda()
-            self.classifier.cuda()
-            self.CateRelated.cuda()
+            self.network.cuda()
             self.EnvRelated.cuda()
             self.d_classifier.cuda()
             self.ClassPrototype.cuda()
