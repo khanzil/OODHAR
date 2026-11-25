@@ -53,6 +53,18 @@ CFSM:
   lambd_mixup: 0.1
   mixup_use_onehot: true
   theta: 1
+  iter: 0.5
+CFSMp3:
+  loss_type_d: CrossEntropy
+  d_nonlinear_classifier: false
+  lambd_domain: 0.1
+  lambd_orth: 0.1
+  lambd_cross_class: 0.1
+  lambd_cross_sample: 0.1
+  lambd_mixup: 0.1
+  mixup_use_onehot: true
+  theta: 1
+  iter: 0.5
 GroupDRO:
   theta: 1
 Fishr:

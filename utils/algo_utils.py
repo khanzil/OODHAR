@@ -1992,6 +1992,293 @@ class CFSM(Algorithm):
         self.ClassPrototype.load_state_dict(state_dict['ClassPrototype'])
         return step
 
+
+class CFSMp3(Algorithm):
+    def __init__ (self, cfgs, args):
+        self.cuda = args.cuda
+        self.featurizer = Featurizer(cfgs)
+        self.classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_classes'],
+            is_nonlinear=False # Linear classifier is required
+        )
+
+        self.d_classifier = Classifier(
+            self.featurizer.n_outputs,
+            cfgs['num_train_domains'],
+            cfgs['CFSM']['d_nonlinear_classifier']
+        )
+
+        self.n_domains = cfgs['num_domains']
+        self.theta = cfgs['CFSM']['theta']
+        self.lambd_domain = cfgs['CFSM']['lambd_domain']
+        self.lambd_orth = cfgs['CFSM']['lambd_orth']
+        self.lambd_cross_class = cfgs['CFSM']['lambd_cross_class']
+        self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
+        self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
+        self.iter = cfgs['num_steps'] * cfgs['CFSM']['iter']
+
+        self.mixup_use_onehot = cfgs['CFSM']['mixup_use_onehot']
+
+        self.CateRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.EnvRelated = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        )
+
+        self.P_linear = nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs)
+        self.P_acti = nn.ReLU()
+
+
+        self.ClassPrototype = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.classifier[-1].weight.shape[1],self.featurizer.n_outputs), # classifier.weight have shape (n_class, n_hidden)
+            nn.ReLU(),
+            nn.Linear(self.featurizer.n_outputs,self.featurizer.n_outputs),
+        )
+
+        self.network = nn.Sequential(self.featurizer, self.CateRelated, self.P_linear, self.P_acti, self.classifier)
+        self.optimizer = torch.optim.Adam(list(self.network.parameters())+
+                                          list(self.EnvRelated.parameters())+
+                                          list(self.d_classifier.parameters())+
+                                          list(self.ClassPrototype.parameters()), 
+                                          lr=cfgs['learning_rate'],
+                                          weight_decay=cfgs['weight_decay'])
+
+        self.lr = cfgs['learning_rate']
+        self.wd = cfgs['weight_decay']
+        
+        if cfgs['loss_type'] == 'CrossEntropy':
+            self.loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
+
+        if cfgs['CFSM']['loss_type_d'] == 'CrossEntropy':
+            self.d_loss_type = nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError(f"{cfgs['loss_type_d']} is not implemented")
+
+        if self.cuda:
+            self.featurizer.cuda()
+            self.classifier.cuda()
+            self.CateRelated.cuda()
+            self.EnvRelated.cuda()
+            self.d_classifier.cuda()
+            self.ClassPrototype.cuda()
+
+    def orth_loss(self):
+        product = torch.inner(self.CateRelated[1].weight, self.EnvRelated[1].weight)
+        return (product ** 2).mean()
+
+    def cross_sample_loss(self, z_cate, all_y, all_d, weighted=False):
+        z_cate_norm = nn.functional.normalize(z_cate, p=2, dim=1)
+        cos_sim = torch.inner(z_cate_norm, z_cate_norm)
+        self_pair = torch.eye(len(all_y), dtype=torch.bool, device=all_y.device)
+        pos_pair = (all_y.unsqueeze(0) == all_y.unsqueeze(1)) & (~self_pair)
+
+        in_dom_pair = (all_d.unsqueeze(0) == all_d.unsqueeze(1)) & (~self_pair)
+
+        if not pos_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        threshold = torch.mean(cos_sim[pos_pair]) * self.theta
+        neg_pair = (cos_sim > threshold) & (~pos_pair) & (~self_pair) & in_dom_pair
+
+        if not neg_pair.any():
+            return torch.tensor(0, device=all_y.device)
+        
+        idx_i, idx_j = torch.where(neg_pair)
+        z_pos = z_cate_norm[idx_i]
+        z_neg = z_cate_norm[idx_j]
+        y_pos = all_y[idx_i]
+
+        prototype = nn.functional.normalize(self.ClassPrototype(self.classifier[-1].weight), p=2, dim=1)
+
+        return torch.mean(torch.sum(z_neg * prototype[y_pos], dim=1) - torch.sum(z_pos * prototype[y_pos], dim=1))
+
+    def mixup_loss(self, z_cate, z_env, all_y, all_d, pred, use_onehot=True, num_classes=None):
+        out_dom_pair = all_d.unsqueeze(0) != all_d.unsqueeze(1)
+        idx_i, idx_j = torch.where(out_dom_pair)
+
+        features_mixed = z_cate[idx_i] + z_env[idx_j]
+        pred_mixed = self.classifier(features_mixed)
+
+        if use_onehot:
+            ground_truth = nn.functional.one_hot(all_y[idx_i], num_classes=num_classes)
+        else:
+            ground_truth = pred[idx_i]
+
+        return nn.functional.mse_loss(pred_mixed, ground_truth.float())
+
+    def cross_class_loss(self, z_cate, all_y, all_d):
+        z = nn.functional.normalize(z_cate.detach(), p=2, dim=1) 
+        C = int(all_y.max()) + 1
+        ND = int(all_d.max()) + 1
+        dim = z.shape[1]
+
+        # per-(domain, class) means mu[i, c]
+        idx = all_d * C + all_y
+        sums = z.new_zeros(ND * C, dim).index_add_(0, idx, z)
+        cnts = torch.bincount(idx, minlength=ND * C).to(z.dtype)
+        present = (cnts > 0).view(ND, C)
+        mu = (sums / cnts.clamp(min=1).unsqueeze(1)).view(ND, C, dim)
+
+        # D[i, p] = mu[i, c_p] - mu[i, k_p] for class pairs p = (c<k)
+        cc, kk = torch.triu_indices(C, C, 1, device=z.device)
+        D = mu[:, cc] - mu[:, kk]                                 # (ND, P, dim)
+        validD = present[:, cc] & present[:, kk]                  # (ND, P)
+
+        # domain pairs i<j
+        ii, jj = torch.triu_indices(ND, ND, 1, device=z.device)
+        diff = D[ii] - D[jj]                                      # (Q, P, dim)
+        mask = validD[ii] & validD[jj]                            # (Q, P)
+
+        if not mask.any():                                        # e.g. only one domain present
+            return z.new_zeros(())
+        
+        return diff.pow(2).sum(-1)[mask]   
+
+
+    def update(self, minibatches, step, unlabeled=None):
+        self.featurizer.train()
+        self.classifier.train()
+        self.CateRelated.train()
+
+        all_x = torch.cat([x for x,_,_ in minibatches])
+        all_y = torch.cat([y for _,y,_ in minibatches])
+        all_d = torch.cat([torch.full((x.shape[0], ), i, dtype=torch.int64) for i, (x,_,_) in enumerate(minibatches)])
+
+        device = 'cuda' if self.cuda else 'cpu'
+        all_x = all_x.to(device, non_blocking=True)
+        all_y = all_y.to(device, non_blocking=True)
+        all_d = all_d.to(device, non_blocking=True)
+
+        all_z = self.featurizer(all_x)
+        z_cate = self.CateRelated(all_z)
+        z_p = self.P_linear(z_cate)
+
+        z_env = self.EnvRelated(all_z)
+
+        pred = self.classifier(self.P_acti(z_p))
+        d_pred = self.d_classifier(z_env)
+
+        loss_class = self.loss_type(pred, all_y)
+        loss_domain = self.d_loss_type(d_pred, all_d)
+        loss_orth = self.orth_loss()
+        if step >= self.iter:
+            loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d)
+        else:
+            loss_cross_class = torch.tensor([0], device=all_y.device)
+
+        if step == self.iter:
+            self.optimizer = torch.optim.Adam(list(self.network.parameters())+
+                                    list(self.EnvRelated.parameters())+
+                                    list(self.d_classifier.parameters())+
+                                    list(self.ClassPrototype.parameters()), 
+                                    lr=self.lr,
+                                    weight_decay=self.wd)
+
+
+        loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
+        loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
+
+        loss = loss_class + loss_domain + self.lambd_orth * loss_orth + self.lambd_cross_sample * loss_cross_sample + self.lambd_mixup * loss_mixup + self.lambd_cross_class * loss_cross_class
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss'          : loss.item(),
+                'loss_class'    : loss_class.item(),
+                'loss_domain'   : loss_domain.item(),
+                'loss_orth'     : loss_orth.item(),
+                'loss_cross_cl' : loss_cross_class.item(),
+                'loss_cross_sa' : loss_cross_sample.item(),
+                'loss_mixup'    : loss_mixup.item(),
+                }
+
+    def predict(self, x):
+        return self.network(x)
+
+    def validate_step(self, loader):
+        device = 'cuda' if self.cuda else 'cpu'
+        self.featurizer.eval()
+        self.CateRelated.eval()
+        self.classifier.eval()
+        with torch.inference_mode():
+            acc = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            loader_len = torch.zeros(self.n_domains, dtype=torch.float32, device=device)
+            pred_list = []
+
+            for batch_idx, (all_x, all_y, all_d) in enumerate(loader):
+                all_x = all_x.to(device, non_blocking=True)
+                all_y = all_y.to(device, non_blocking=True)
+                all_d = all_d.to(device, non_blocking=True)
+
+                pred = self.predict(all_x)
+                _, pred = pred.max(1) # same as np.argmax()
+                
+                corrects = torch.eq(pred, all_y).to(dtype=torch.int64)
+                acc += torch.bincount(all_d.long(), weights=corrects, minlength=self.n_domains)
+                loader_len += torch.bincount(all_d.long(), minlength=self.n_domains)
+                pred_list.append(zip(pred.cpu().numpy(),all_y.cpu().numpy()))
+
+
+        self.featurizer.train()
+        self.classifier.train()
+        self.CateRelated.train()
+        
+        avg_acc = sum(acc) / sum(loader_len)
+        
+        loader_len = torch.clamp(loader_len, min=1)
+        all_acc = acc / loader_len
+
+        return pred_list, all_acc.cpu().numpy().tolist(), avg_acc.cpu().numpy().item()
+
+    def save_ckpt(self, step, ckpts_dir, is_best=False):
+        if is_best:
+            checkpoint_path = os.path.join(ckpts_dir, f'Best_ckpt.pth.rar')
+        else:
+            checkpoint_path = os.path.join(ckpts_dir, f'Step_{step}_ckpt.pth.rar')
+
+        state_dict = {
+            'step': step,
+            'network': self.network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'rng': torch.get_rng_state(),
+            'np_random': np.random.get_state(),
+            'EnvRelated': self.EnvRelated.state_dict(),
+            'd_classifier': self.d_classifier.state_dict(),
+            'ClassPrototype': self.ClassPrototype.state_dict(),
+        }
+        if torch.cuda.is_available():
+            state_dict.update({'cuda_rng': torch.cuda.get_rng_state()})
+        torch.save(state_dict, checkpoint_path)
+
+    def load_ckpt(self, checkpoint_path):
+        device = "cuda" if self.cuda else "cpu"
+        state_dict = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(device))
+        step = state_dict['step']
+        self.network.load_state_dict(state_dict['network'])
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        torch.set_rng_state(state_dict['rng'].cpu())
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state(state_dict['cuda_rng'].cpu())
+        np.random.set_state(state_dict['np_random'])
+        self.EnvRelated.load_state_dict(state_dict['EnvRelated'])
+        self.d_classifier.load_state_dict(state_dict['d_classifier'])
+        self.ClassPrototype.load_state_dict(state_dict['ClassPrototype'])
+        return step
+
+
 class MMD(Algorithm):
     def __init__ (self, cfgs, args):
         self.cuda = args.cuda

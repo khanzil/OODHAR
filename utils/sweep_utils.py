@@ -40,6 +40,15 @@ def get_random_search_configs(cfgs):
         cfgs['CFSM']['lambd_mixup'] = 10**np.random.uniform(0,1)
         cfgs['CFSM']['theta'] = np.random.uniform(0.1,1)
 
+    elif cfgs['algorithm'] == 'CFSMp3':
+        cfgs['CFSMp3']['lambd_domain'] = 10**np.random.uniform(0,1)
+        cfgs['CFSMp3']['lambd_orth'] = 10**np.random.uniform(0,1)
+        cfgs['CFSMp3']['lambd_cross_class'] = 5**np.random.uniform(0,1)
+        cfgs['CFSMp3']['lambd_cross_sample'] = 10**np.random.uniform(0,1)
+        cfgs['CFSMp3']['lambd_mixup'] = 10**np.random.uniform(0,1)
+        cfgs['CFSMp3']['theta'] = np.random.uniform(0.1,1)
+        cfgs['CFSMp3']['iter'] = np.random.uniform(0.5,0.7)
+
     elif cfgs['algorithm'] == 'GroupDRO':
         cfgs['GroupDRO']['theta'] = 10**np.random.uniform(-3,-1)
 
