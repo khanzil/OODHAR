@@ -2122,65 +2122,62 @@ class CFSMp3(Algorithm):
 
         return nn.functional.mse_loss(pred_mixed, ground_truth.float())
 
-    def cross_class_loss(self, z_cate, all_y, all_d):
-        # z = nn.functional.normalize(z_cate.detach(), p=2, dim=1) 
-        # C = self.n_classes
-        # ND = self.n_train_domains
-        # dim = z.shape[1]
-
-        # # per-(domain, class) means mu[i, c]
-        # idx = all_d * C + all_y
-        # sums = z.new_zeros(ND * C, dim).index_add_(0, idx, z)
-        # cnts = torch.bincount(idx, minlength=ND * C).to(z.dtype)
-        # present = (cnts > 0).view(ND, C)
-        # mu = (sums / cnts.clamp(min=1).unsqueeze(1)).view(ND, C, dim)
-
-        # # D[i, p] = mu[i, c_p] - mu[i, k_p] for class pairs p = (c<k)
-        # cc, kk = torch.triu_indices(C, C, 1, device=z.device)
-        # D = mu[:, cc] - mu[:, kk]                                 # (ND, P, dim)
-        # validD = present[:, cc] & present[:, kk]                  # (ND, P)
-
-        # # domain pairs i<j
-        # ii, jj = torch.triu_indices(ND, ND, 1, device=z.device)
-        # diff = D[ii] - D[jj]                                      # (Q, P, dim)
-        # mask = validD[ii] & validD[jj]                            # (Q, P)
-
-        # if not mask.any():                                        # e.g. only one domain present
-        #     return torch.tensor([0], device=all_y.device)
-
-        # loss = diff.pow(2).sum(-1)[mask]
-        # return loss.mean()
-
-        z = nn.functional.normalize(z_cate, p=2, dim=1)
+    def cross_class_loss(self, z, all_y, all_d):
         C = self.n_classes
         ND = self.n_train_domains
         dim = z.shape[1]
 
-        # per-(domain, class) means: mu[i, c]
+        # per-(domain, class) means mu[i, c]
         idx = all_d * C + all_y
         sums = z.new_zeros(ND * C, dim).index_add_(0, idx, z)
         cnts = torch.bincount(idx, minlength=ND * C).to(z.dtype)
         present = (cnts > 0).view(ND, C)
         mu = (sums / cnts.clamp(min=1).unsqueeze(1)).view(ND, C, dim)
-        W = self.classifier[-1].weight
 
-        # projected class gaps per domain: s[i, c, k] = D_i^{ck} . v^{ck}
+        # D[i, p] = mu[i, c_p] - mu[i, k_p] for class pairs p = (c<k)
+        cc, kk = torch.triu_indices(C, C, 1, device=z.device)
+        D = mu[:, cc] - mu[:, kk]                                 # (ND, P, dim)
+        validD = present[:, cc] & present[:, kk]                  # (ND, P)
 
-        # M[i, a, b] = w^a . mu[i, b]
-        M = torch.einsum("ad,ibd->iab", W, mu)                    # (ND, C, C)
-        # s[i, c, k] = w^c . (mu[i,c] - mu[i,k]) = D_i^{ck} . w^c
-        s = M.diagonal(dim1=1, dim2=2).unsqueeze(2) - M           # (ND, C, C)
-
-        valid = present[:, :, None] & present[:, None, :]         # both classes in domain i
-        diff = s[:, None] - s[None, :]                            # (ND, ND, C, C)
-        mask = valid[:, None] & valid[None, :]
-        mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=z.device), 1)[:, :, None, None]
-        mask &= ~torch.eye(C, dtype=torch.bool, device=z.device)[None, None]
+        # domain pairs i<j
+        ii, jj = torch.triu_indices(ND, ND, 1, device=z.device)
+        diff = D[ii] - D[jj]                                      # (Q, P, dim)
+        mask = validD[ii] & validD[jj]                            # (Q, P)
 
         if not mask.any():                                        # e.g. only one domain present
-            return z.new_zeros(())
-        d = diff[mask]
-        return d.pow(2).mean()
+            return torch.tensor([0], device=all_y.device)
+
+        loss = diff.pow(2).sum(-1)[mask]
+        return loss.mean()
+
+        # z = nn.functional.normalize(z_cate, p=2, dim=1)
+        # C = self.n_classes
+        # ND = self.n_train_domains
+        # dim = z.shape[1]
+
+        # # per-(domain, class) means: mu[i, c]
+        # idx = all_d * C + all_y
+        # sums = z.new_zeros(ND * C, dim).index_add_(0, idx, z)
+        # cnts = torch.bincount(idx, minlength=ND * C).to(z.dtype)
+        # present = (cnts > 0).view(ND, C)
+        # mu = (sums / cnts.clamp(min=1).unsqueeze(1)).view(ND, C, dim)
+        # W = self.classifier[-1].weight
+
+        # # M[i, a, b] = w^a . mu[i, b]
+        # M = torch.einsum("ad,ibd->iab", W, mu)                    # (ND, C, C)
+        # # s[i, c, k] = w^c . (mu[i,c] - mu[i,k]) = D_i^{ck} . w^c
+        # s = M.diagonal(dim1=1, dim2=2).unsqueeze(2) - M           # (ND, C, C)
+
+        # valid = present[:, :, None] & present[:, None, :]         # both classes in domain i
+        # diff = s[:, None] - s[None, :]                            # (ND, ND, C, C)
+        # mask = valid[:, None] & valid[None, :]
+        # mask &= torch.triu(torch.ones(ND, ND, dtype=torch.bool, device=z.device), 1)[:, :, None, None]
+        # mask &= ~torch.eye(C, dtype=torch.bool, device=z.device)[None, None]
+
+        # if not mask.any():                                        # e.g. only one domain present
+        #     return z.new_zeros(())
+        # d = diff[mask]
+        # return d.pow(2).mean()
     
 
     def update(self, minibatches, step, unlabeled=None):
@@ -2199,18 +2196,16 @@ class CFSMp3(Algorithm):
 
         all_z = self.featurizer(all_x)
         z_cate = self.CateRelated(all_z)
-        z_p = self.P_linear(z_cate)
-
         z_env = self.EnvRelated(all_z)
 
-        pred = self.classifier(self.P_acti(z_p))
+        pred = self.classifier(self.P_acti(self.P_linear(z_cate)))
         d_pred = self.d_classifier(z_env)
 
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
         if step >= self.iter:
-            loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d)
+            loss_cross_class = self.cross_class_loss(self.P_linear(z_cate.detach()), all_y, all_d)
         else:
             loss_cross_class = torch.tensor([0], device=all_y.device)
 

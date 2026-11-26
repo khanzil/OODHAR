@@ -43,7 +43,7 @@ def get_random_search_configs(cfgs):
     elif cfgs['algorithm'] == 'CFSMp3':
         cfgs['CFSMp3']['lambd_domain'] = 10**np.random.uniform(0,1)
         cfgs['CFSMp3']['lambd_orth'] = 10**np.random.uniform(0,1)
-        cfgs['CFSMp3']['lambd_cross_class'] = 10**np.random.uniform(0,1)
+        cfgs['CFSMp3']['lambd_cross_class'] = 10**np.random.uniform(-1,0)
         cfgs['CFSMp3']['lambd_cross_sample'] = 10**np.random.uniform(0,1)
         cfgs['CFSMp3']['lambd_mixup'] = 10**np.random.uniform(0,1)
         cfgs['CFSMp3']['theta'] = np.random.uniform(0.1,1)
