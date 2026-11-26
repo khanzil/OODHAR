@@ -1681,6 +1681,9 @@ class CFSM(Algorithm):
             cfgs['CFSM']['d_nonlinear_classifier']
         )
 
+        self.n_classes = cfgs['num_classes']
+        self.n_train_domains = cfgs['num_train_domains']
+
         self.n_domains = cfgs['num_domains']
         self.theta = cfgs['CFSM']['theta']
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
@@ -1785,8 +1788,8 @@ class CFSM(Algorithm):
 
     def cross_class_loss(self, z_cate, all_y, all_d):
         z = nn.functional.normalize(z_cate, p=2, dim=1)
-        C = int(all_y.max()) + 1
-        ND = int(all_d.max()) + 1
+        C = self.n_classes
+        ND = self.n_train_domains
         dim = z.shape[1]
 
         # per-(domain, class) means: mu[i, c]
@@ -2009,6 +2012,9 @@ class CFSMp3(Algorithm):
             cfgs['CFSM']['d_nonlinear_classifier']
         )
 
+        self.n_classes = cfgs['num_classes']
+        self.n_train_domains = cfgs['num_train_domains']
+
         self.n_domains = cfgs['num_domains']
         self.theta = cfgs['CFSM']['theta']
         self.lambd_domain = cfgs['CFSM']['lambd_domain']
@@ -2118,8 +2124,8 @@ class CFSMp3(Algorithm):
 
     def cross_class_loss(self, z_cate, all_y, all_d):
         z = nn.functional.normalize(z_cate.detach(), p=2, dim=1) 
-        C = int(all_y.max()) + 1
-        ND = int(all_d.max()) + 1
+        C = self.n_classes
+        ND = self.n_train_domains
         dim = z.shape[1]
 
         # per-(domain, class) means mu[i, c]
