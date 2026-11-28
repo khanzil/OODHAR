@@ -4,28 +4,33 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-detail = "Algo" # "All" for all test_dom avg, "Search" for all search avg, "Seed" for all seed best, "Algo" for all algo avg
+detail = "Algo" # "All" for all test_dom acc, "Search" for all search avg, "Seed_all" for all test_dom acc of seed best, "Seed" for all avg_acc of seed best, "Algo" for all algo avg
 
-root_dir = './results/Glasgow/Age'
+root_dir = './results/Glasgow/Room'
 algo_list = [
-            #  'ERM', 
-            #  'DANN', 
-            #  'IRM', 
-            #  'VRex', 
-            #  'GroupDRO', 
-            #  'SAM', 
-            #  'Fish', 
-            #  'Fishr', 
-            #  'CORAL', 
-            #  'MMD', 
-             'CFSM', 
+             'ERM', 
+             'DANN', 
+             'IRM', 
+             'VRex', 
+             'GroupDRO', 
+             'SAM', 
+             'Fish', 
+             'Fishr', 
+             'CORAL', 
+             'MMD', 
+            #  'CFSM', 
              'CFSM onehot', 
-             'CFSM wo mixup', 
+            #  'CFSM wo mixup', 
             #  'CFSMp1', 
             #  'CFSMp11', 
-             'CFSMp2' 
+            #  'CFSMp2',
+            #  'CFSMp21',
+             'CFSMp22',
+            #  'CFSMp3',
+            #  'CFSMp32',
+            #  'CFSM onehot track cross cl', 
+            #  'CFSM no thresh'
             ]
-
 
 
 
@@ -80,6 +85,7 @@ class search_results():
         self.avg_result = [] # structure: list_of_seeds[list_of_searches[dict_of_avg{}]]
         if return_best:
             self.seed_best = [[] for _ in range(len(self.result))]
+            self.seed_best_all = [[] for _ in range(len(self.result))]
 
         for i_seed, _ in enumerate(self.result):
             self.avg_result.append([])
@@ -102,6 +108,7 @@ class search_results():
                     if search_avg_result['val_avg_acc'] > best_val:
                         best_val = search_avg_result['val_avg_acc']
                         self.seed_best[i_seed] = (i_search, search_avg_result)
+                        self.seed_best_all[i_seed] = (i_search, self.result[i_seed][i_search])
 
     def get_algo_avg(self):
         if not hasattr(self, 'seed_best'):
@@ -123,7 +130,7 @@ class search_results():
 
 if __name__ == '__main__':
 
-    if detail in ['All']:
+    if detail in ['All', 'Seed_all']:
         keys = ['seed', 'search', 'test_dom', 'loss_class', 'tr_avg_acc', 'val_avg_acc', 'test_acc']
     elif detail in ['Search']:
         keys = ['seed', 'search', 'loss_class', 'tr_avg_acc', 'val_avg_acc', 'test_acc']
@@ -198,7 +205,20 @@ if __name__ == '__main__':
 
             print("")
 
+        if detail == 'Seed_all':
+            for i_seed, (i_search, seed_best) in enumerate(algo_results.seed_best_all):
+                for i_test_dom, test_dom in enumerate(seed_best):
+                    print(f"{algo}".ljust(30), end="")
+                    print(f"seed{i_seed}".ljust(15), end="")
+                    print(f"search{i_search+1}".ljust(15), end="")
+                    print(f"test_dom_{i_test_dom}".ljust(15), end="")
 
-
+                    for key in test_dom.keys():
+                        if 'acc' in key:
+                            test_dom[key] = int(test_dom[key] * 1e4)/1.0e2
+                            print(f"{test_dom[key]:<.2f}".ljust(15), end="")
+                        else:
+                            print(f"{test_dom[key]:<.6f}".ljust(15), end="")
+                    print("")
 
 

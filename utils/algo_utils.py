@@ -1691,6 +1691,7 @@ class CFSM(Algorithm):
         self.lambd_cross_class = cfgs['CFSM']['lambd_cross_class']
         self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
         self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
+        self.iter = cfgs['CFSM']['iter']
 
         self.mixup_use_onehot = cfgs['CFSM']['mixup_use_onehot']
 
@@ -1723,6 +1724,9 @@ class CFSM(Algorithm):
                                           lr=cfgs['learning_rate'],
                                           weight_decay=cfgs['weight_decay'])
         
+        self.lr = cfgs['learning_rate']
+        self.wd = cfgs['weight_decay']
+
         if cfgs['loss_type'] == 'CrossEntropy':
             self.loss_type = nn.CrossEntropyLoss()
         else:
@@ -1903,7 +1907,20 @@ class CFSM(Algorithm):
         loss_class = self.loss_type(pred, all_y)
         loss_domain = self.d_loss_type(d_pred, all_d)
         loss_orth = self.orth_loss()
-        loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d) 
+
+        if step >= self.iter:
+            loss_cross_class = self.cross_class_loss(z_cate, all_y, all_d)
+        else:
+            loss_cross_class = torch.tensor([0], device=all_y.device)
+
+        if step == self.iter:
+            self.optimizer = torch.optim.Adam(list(self.network.parameters())+
+                                              list(self.EnvRelated.parameters())+
+                                              list(self.d_classifier.parameters())+
+                                              list(self.ClassPrototype.parameters()), 
+                                              lr=self.lr,
+                                              weight_decay=self.wd)
+
         loss_cross_sample = self.cross_sample_loss(z_cate, all_y, all_d)
         loss_mixup = self.mixup_loss(z_cate, z_env, all_y, all_d, pred, self.mixup_use_onehot, self.classifier[-1].weight.shape[0])
 
