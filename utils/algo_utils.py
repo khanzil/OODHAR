@@ -2033,15 +2033,15 @@ class CFSMp3(Algorithm):
         self.n_train_domains = cfgs['num_train_domains']
 
         self.n_domains = cfgs['num_domains']
-        self.theta = cfgs['CFSM']['theta']
-        self.lambd_domain = cfgs['CFSM']['lambd_domain']
-        self.lambd_orth = cfgs['CFSM']['lambd_orth']
-        self.lambd_cross_class = cfgs['CFSM']['lambd_cross_class']
-        self.lambd_mixup = cfgs['CFSM']['lambd_mixup']
-        self.lambd_cross_sample = cfgs['CFSM']['lambd_cross_sample']
-        self.iter = cfgs['num_steps'] * cfgs['CFSM']['iter']
+        self.theta = cfgs['CFSMp3']['theta']
+        self.lambd_domain = cfgs['CFSMp3']['lambd_domain']
+        self.lambd_orth = cfgs['CFSMp3']['lambd_orth']
+        self.lambd_cross_class = cfgs['CFSMp3']['lambd_cross_class']
+        self.lambd_mixup = cfgs['CFSMp3']['lambd_mixup']
+        self.lambd_cross_sample = cfgs['CFSMp3']['lambd_cross_sample']
+        self.iter = cfgs['num_steps'] * cfgs['CFSMp3']['iter']
 
-        self.mixup_use_onehot = cfgs['CFSM']['mixup_use_onehot']
+        self.mixup_use_onehot = cfgs['CFSMp3']['mixup_use_onehot']
 
         self.CateRelated = nn.Sequential(
             nn.Flatten(),
@@ -2084,7 +2084,7 @@ class CFSMp3(Algorithm):
         else:
             raise NotImplementedError(f"{cfgs['loss_type']} is not implemented")
 
-        if cfgs['CFSM']['loss_type_d'] == 'CrossEntropy':
+        if cfgs['CFSMp3']['loss_type_d'] == 'CrossEntropy':
             self.d_loss_type = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError(f"{cfgs['loss_type_d']} is not implemented")
