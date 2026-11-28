@@ -2026,7 +2026,7 @@ class CFSMp3(Algorithm):
         self.d_classifier = Classifier(
             self.featurizer.n_outputs,
             cfgs['num_train_domains'],
-            cfgs['CFSM']['d_nonlinear_classifier']
+            cfgs['CFSMp3']['d_nonlinear_classifier']
         )
 
         self.n_classes = cfgs['num_classes']
